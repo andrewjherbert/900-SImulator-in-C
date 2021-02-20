@@ -12,7 +12,7 @@
 
 // Code assumes int is >= 19 bits and long int >= 38 bits.
 
-// Usage: elliott900  [options] [ ptr [ ptp [ tty ]]]
+// Usage: emu900  [options] [ ptr [ ptp [ tty ]]]
 //
 // ptr is file containing paper tape reader input.  Defaults to .reader.
 // ptp is file to be used for paper tape punch output.  Defaults to .punch.
