@@ -1,0 +1,16 @@
+﻿FIBONNACI;
+"BEGIN"
+   "COMMENT" 31-MAR-2011.
+              Prints a table of Fibonacci numbers;
+   "INTEGER" F0, F1, J;
+   F0 := F1 := 1;
+   PUNCH(3);
+   "FOR" J := 1 "STEP" 1 "UNTIL" 20 "DO"
+   "BEGIN"
+      "INTEGER" F2;
+      "PRINT" DIGITS(3), J, SAME LINE, DIGITS(6), F0, SQRT(F0);
+      F2 := F0 + F1;
+      F0 := F1;
+      F1 := F2;
+   "END";
+"END"

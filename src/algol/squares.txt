@@ -1,0 +1,12 @@
+﻿TABLE OF SQUARES;
+"BEGIN"
+   "COMMENT" 13-APR-1996.
+              Prints a table of squares;
+   "INTEGER" J;
+   PUNCH(3);
+   "PRINT" 'TABLE OF SQUARES`;
+   "FOR" J := 1 "STEP" 1 "UNTIL" 10 "DO"
+      "PRINT" DIGITS(3), J, SAME LINE, DIGITS(6), J^2
+"END"
+
+

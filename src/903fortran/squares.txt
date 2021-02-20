@@ -1,0 +1,13 @@
+﻿      GLOBAL, SQUARE ]
+C     TABLE OF SQUARES
+      WRITE (2, 90)
+      DO 10 I = 1,  10
+10    WRITE (2, 91) I, I**2
+      STOP
+90    FORMAT (17H TABLE OF SQUARES)
+91    FORMAT (I7, I6)
+      END
+<! HALT !>
+
+
+

@@ -1,0 +1,23 @@
+﻿      GLOBAL, STICKLER]
+
+C  THE STICKLER PROBLEM -- FROM FORSYTHE, KEENAN, ORGANICK AND STENBERG,
+C  FORTRAN LANGAUGE SUPPLEMENT, PAGE 112
+
+C  FINDING THREE DIGIT NUMBERS THAT ARE THE EQUAL TO THE SUM OF THE CUBES
+C  OF THEIR DIGITS
+
+       DO 40 IH = 1, 9
+          DO 30 IT = 1, 10
+             DO 20 IU = 1, 10
+                ITM1 = IT - 1
+                IUM1 = IU - 1
+                IF ((100*IH + 10*ITM1 + IUM1) - (IH**3 +ITM1**3 + IUM1**3)) 20, 10, 20
+    10          WRITE (2, 100) IH, ITM1, IUM1
+    20       CONTINUE
+    30     CONTINUE
+    40  CONTINUE
+   999  STOP
+   100  FORMAT (3I5)
+        END
+
+<! HALT !>

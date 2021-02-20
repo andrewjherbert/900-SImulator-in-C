@@ -1,0 +1,20 @@
+﻿NEWTON;
+"BEGIN"
+   "COMMENT" 30-MAR-2011.
+              Use Newton Raphson iteration to compute roots of
+	      f(x) = cosh x + cos x - 3 = 0;
+   "REAL" X, XNEW, EX, EMX;
+   "INTEGER" N;
+   PUNCH(3);
+   X := 1.0;
+   "FOR" N := 1 "STEP" 1 "UNTIL" 20 "DO"
+   "BEGIN"
+      EX := EXP(X);
+      EMX := 1.0 / EX;
+      XNEW := X - ((EX+EMX)/2.0 + COS(X) -3.0) / ((EX-EMX)/2.0 - SIN(X));
+      "PRINT" XNEW;
+      "IF" (ABS(X-XNEW) < 1.0?-6)
+      "THEN" STOP;
+       X := XNEW;
+   "END";
+"END" NEWTON;

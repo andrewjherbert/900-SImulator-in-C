@@ -1,0 +1,19 @@
+﻿sine table;
+"begin"
+   "comment" 31-MAR-2011;
+   "integer" x; "real" pi;
+   "real" "procedure" readint;
+   "begin"
+      "read" reader(1), readint;
+   "end" readint;
+   punch(3);
+   "print" ''LS3`X'S4`SIN(X)`;
+   pi := 4 * arctan(1);
+   "for" x := readint, readint "while" x "ge" 0 "do"
+      "print" digits(3), x, same line,
+         aligned(2, 6), sin(x * pi / 180);
+"end"
+
+Algol allows data to follow the program
+
+ 10 20 30 40 50 60 70 80 90 -1
