@@ -91,6 +91,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
 
 
 /**********************************************************/
@@ -150,8 +151,8 @@
 
 
 /* these next two declarations will blow up if int < 19 bits */
-int      bits18 =      262144;  // modulus for 18 bit operations
-long int bits36 = 68719476736L; // modulus for 64 bit operations
+int           bits18 =      262144;  // modulus for 18 bit operations
+long long int bits36 = 68719476736L; // modulus for 64 bit operations
 
 /* Diagnostics related variables */
 FILE *diag;              // diagnostics output - se to either  stderr or .log
@@ -213,7 +214,7 @@ void tidyExit();        // tidy up and exit
 void writeStore();      // dump out store image
 
 void printDiagnostics(int i, int f, int a); // print diagnostic information for current instruction
-void printTime(long us);  // print out time counted in microseconds
+void printTime(long long us);  // print out time counted in microseconds
 void printAddr(FILE *f, int addr); // print address in m^nnn format
   
 int readTape();         // red from paper tape
@@ -334,7 +335,7 @@ void emulate () {
 
   int exitCode      = EXIT_SUCCESS; // reason for terminating
   int tracing       = FALSE; // true if tracing enabled
-  long emTime       = 0L; // crude estimate of 900 elapsed time
+  long long emTime   = 0L; // crude estimate of 900 elapsed time
 
   // set up machine ready to execute
   clearStore();  // start with a cleared store
@@ -469,9 +470,9 @@ void emulate () {
           case 12:  // Multiply
 	    {
 	      // extend sign bits for a and store[m]
-	      long al = (long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
-	      long sl = (long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-	      long prod = al * sl;
+	      long long al = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
+	      long long sl = (long long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+	      long long  prod = al * sl;
 	      qReg = (int) ((prod << 1) & MASK18L );
 	      if   ( al < 0 ) qReg |= 1;
 	      prod = prod >> 17; // arithmetic shift
@@ -483,11 +484,11 @@ void emulate () {
           case 13:  // Divide
 	    {
 	      // extend sign bit for aq
-	      long al   = (long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
-	      long ql   = (long) qReg;
-	      long aql  = (al << 18) | ql;
-	      long ml   = (long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-              long quot = (( aql / ml) >> 1) & MASK18L;
+	      long long al   = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	      long long ql   = (long long) qReg;
+	      long long aql  = (al << 18) | ql;
+	      long long ml   = (long long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+              long long quot = (( aql / ml) >> 1) & MASK18L;
 	      int q     = (int) quot;
   	      aReg = q | 1;
 	      qReg = q & 0777776;
@@ -498,9 +499,9 @@ void emulate () {
           case 14:  // Shift - assumes >> applied to a signed long or int is arithmetic
 	    {
               int places = m & ADDR_MASK;
-	      long al  = (long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
-	      long ql  = qReg;
-	      long aql = (al << 18) | ql;
+	      long long al  = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	      long long ql  = qReg;
+	      long long aql = (al << 18) | ql;
 	      int i;
 	      
 	      if   ( places <= 2047 )
@@ -737,7 +738,7 @@ void writeStore () {
     fprintf(diag, ")\n");
 }
 
-void printTime (long us) { // print out time in us
+void printTime (long long us) { // print out time in us
    int hours, mins; float secs;
    hours = us / 360000000L;
    us -= (hours * 360000000L);
@@ -804,7 +805,8 @@ int readTape() {
   int ch;
   if   ( ptr == NULL )
     {
-      fprintf(diag, "Opening paper tape reader file %s\n", ptrPath);
+      if ( (verbose & 1) > 0 )
+	fprintf(diag, "Opening paper tape reader file %s\n", ptrPath);
       if  ( (ptr = fopen(ptrPath, "rb")) == NULL )
 	{
           printf("*** %s ", ERR_FOPEN_RDR_FILE);
@@ -838,7 +840,8 @@ int readTape() {
 void punchTape(int ch) {
   if  ( pun == NULL )
     {
-      fprintf(diag, "Opening paper tape punch file %s\n", ptpPath);
+      if  ( (verbose & 1) > 1 )
+	fprintf(diag, "Opening paper tape punch file %s\n", ptpPath);
       if  ( (pun = fopen(ptpPath, "wb")) == NULL )
 	{
 	  printf("*** %s ", ERR_FOPEN_PUN_FILE);
@@ -870,7 +873,8 @@ int readTTY() {
   int ch;
   if   ( ttyi == NULL )
     {
-      fprintf(diag, "Opening teletype input file %s\n", ttyInPath);
+      if  ( (verbose & 1) > 1 )
+	fprintf(diag, "Opening teletype input file %s\n", ttyInPath);
       if  ( (ttyi = fopen(ttyInPath, "rb")) == NULL )
 	{
           printf("*** %s ", ERR_FOPEN_TTYIN_FILE);
