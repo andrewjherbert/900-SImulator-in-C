@@ -65,8 +65,6 @@ int main (int argc, char *argv[]) {
 
   // open files
 
-  printf("opening input %s output %s\n", inPath, outPath);
-  
   if ( !(inFile = fopen(inPath, "rb")) ){
        printf(ERR_FOPEN_INPUT);
        perror(inPath);
