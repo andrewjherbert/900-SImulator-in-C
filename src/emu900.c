@@ -904,7 +904,7 @@ int readTTY() {
 }
 
 void writeTTY(int ch) {
-  int ch2 = ( ((ch &= 127) == 10 ) || ((32 <= ch) && (ch <= 122)) ? ch : -1 );
+  int ch2 = ( ((ch &= 127) == 10 ) || ((ch >= 32) && (ch <= 122)) ? ch : -1 );
   if  ( (verbose & 8) > 0 )
     {
       traceOne = TRUE;
@@ -914,8 +914,8 @@ void writeTTY(int ch) {
       else
 	fprintf(diag, "(%c)\n", ch2);
     }
-    if  ( ch != -1 )
-      putchar((lastttych = ch));
+    if  ( ch2 != -1 )
+      putchar((lastttych = ch2));
 }
 
 /**********************************************************/
