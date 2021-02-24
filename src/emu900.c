@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 19/02/2021
+// Elliott 903 emulator - Andrew Herbert - 24/02/2021
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -191,6 +191,7 @@ int lastSCR; // used to detect dynamic loops
 int level = 1; // priority level
 int iCount = 0; // count of instructions executed
 int instruction, f, a, m;
+int fCount[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // function code counts
 
 /* Tracing */
 int traceOne      = FALSE; // TRUE => trace current instruction only
@@ -221,6 +222,7 @@ int readTape();         // red from paper tape
 void punchTape(int ch); // punch to paper tape
 int readTTY();          // read from teletype
 void writeTTY(int ch);  // write to teletype
+void flushTTY();        //force output of last tty output line
 void loadII();          // load initial orders
 int makeIns(int m, int f, int a); // help for loadII
 
@@ -361,6 +363,7 @@ void emulate () {
       if   ( lastSCR >= STORE_SIZE )
         {
           fprintf(diag, "*** SCR has overflowed the store (SCR = %d)\n", lastSCR);
+	  flushTTY();
   	  tidyExit(EXIT_FAILURE);
         }
       store[scReg]++;                 // increment SCR
@@ -369,6 +372,7 @@ void emulate () {
       instruction = store[lastSCR];
       f = (instruction >> FN_SHIFT) & FN_MASK;
       a = (instruction & ADDR_MASK) | (lastSCR & MOD_MASK);
+      fCount[f]+=1; // track number of executions of each function code
 
       // perform B modification if needed
       if ( instruction >= BIT18 )
@@ -569,7 +573,8 @@ void emulate () {
 		      emTime += 19;
 	              break;
 
-	            default: 
+	            default:
+		      flushTTY();
 	              fprintf(stderr, "*** Unsupported 15 i/o instruction\n");
 	              printDiagnostics(instruction, f, a);
 	              tidyExit(EXIT_FAILURE);
@@ -599,15 +604,20 @@ void emulate () {
         // print diagnostics if required
         if   ( traceOne )
 	  {
- 	    traceOne = FALSE; // dealt with single case
+ 	    flushTTY();
+	    traceOne = FALSE; // dealt with single case
   	    printDiagnostics(instruction, f, a);
           }
 	else if ( tracing && ((verbose & 4) > 0) )
-	  printDiagnostics(instruction, f, a);
+	  {
+	    flushTTY();
+	    printDiagnostics(instruction, f, a);
+	  }
 	  
 	// check for limits
         if   ( (abandon != -1) && (iCount >= abandon) )
         {
+	  flushTTY();
           if  ( (verbose & 1) > 0 ) fprintf(diag, "Instruction limit reached\n");
           exitCode = EXIT_LIMITSTOP;
   	  break;
@@ -616,6 +626,7 @@ void emulate () {
         // check for dynamic stop
         if   ( store[scReg] == lastSCR )
 	  {
+	    flushTTY();
 	    if   ( (verbose & 1) > 0 )
 	      {
 	        fprintf(diag, "Dynamic stop at ");
@@ -630,6 +641,13 @@ void emulate () {
   // execution complete
   if   ( (verbose & 1) > 0 ) // print statistics
     {
+      int i;
+      fprintf(diag, "Function code count\n");
+      for ( i = 0 ; i <= 15 ; i++ )
+	{
+	  fprintf(diag, "%4d: %8d (%3d%%)", i, fCount[i], (fCount[i] * 100) / iCount);
+	  if  ( ( i % 4) == 3 ) fputc('\n', diag);
+	}
        fprintf(diag, "%d instructions executed in ", iCount);
        printTime(emTime);
        fprintf(diag, " of simulated time\n");
@@ -776,19 +794,8 @@ void tidyExit (int reason) {
 	  fclose(ptr);
 	  fclose(ptr2);
 	}
-      if  (pun != NULL )
-	{
-	  if ( (verbose & 1) > 0 )
-	    fprintf(diag, "Closing punch file\n");
-          fclose(pun);
-        }
-      if ( ttyi != NULL )
-	{
-	  if  ( (verbose & 1) > 0 )
-	      fprintf(diag, "Closing teletype input file\n");
-	  if ( lastttych != 10 ) fputc('\n', ttyi); // force end of line
-	  fclose(ttyi);
-	}
+      if  ( pun  != NULL ) fclose(pun);
+      if  ( ttyi != NULL ) fclose(ttyi);
     }
   if ( (verbose & 1) > 0) printf("Exiting %d\n", reason);
   exit(reason);
@@ -805,8 +812,6 @@ int readTape() {
   int ch;
   if   ( ptr == NULL )
     {
-      if ( (verbose & 1) > 0 )
-	fprintf(diag, "Opening paper tape reader file %s\n", ptrPath);
       if  ( (ptr = fopen(ptrPath, "rb")) == NULL )
 	{
           printf("*** %s ", ERR_FOPEN_RDR_FILE);
@@ -816,12 +821,16 @@ int readTape() {
 	  /* NOT REACHED */
         }
       else if  ( (verbose & 1) > 0 )
+	{
+	  flushTTY();
 	fprintf(diag, "Paper tape reader file %s opened\n", ptrPath);
+	}
     }
   if  ( (ch = fgetc(ptr)) != EOF )
       {
 	if  (( verbose & 8 ) > 0 )
 	  {
+	    flushTTY();
 	    traceOne = TRUE;
 	    fprintf(diag, "Paper tape character %3d read\n", ch);
 	  }
@@ -829,6 +838,7 @@ int readTape() {
       }
     else
       {
+	flushTTY();
         if  ( (verbose & 1) > 0 )
 	  fprintf(diag, "Run off end of input tape\n");
         tidyExit(EXIT_RDRSTOP);
@@ -840,10 +850,9 @@ int readTape() {
 void punchTape(int ch) {
   if  ( pun == NULL )
     {
-      if  ( (verbose & 1) > 1 )
-	fprintf(diag, "Opening paper tape punch file %s\n", ptpPath);
       if  ( (pun = fopen(ptpPath, "wb")) == NULL )
 	{
+	  flushTTY();
 	  printf("*** %s ", ERR_FOPEN_PUN_FILE);
 	  perror("ptpPath");
 	  putchar('\n');
@@ -851,10 +860,14 @@ void punchTape(int ch) {
 	  /* NOT REACHED */
 	}
       else if  ( (verbose & 1) > 0 )
-	fprintf(diag, "Paper tape punch file %s opened\n", ptpPath);
+	{
+	  flushTTY();
+	 fprintf(diag, "Paper tape punch file %s opened\n", ptpPath);
+	}
     }
   if  ( fputc(ch, pun) != ch )
     {
+      flushTTY();
       printf("*** Problem writing to ");
       perror(ptpPath);
       putchar('\n');
@@ -863,6 +876,7 @@ void punchTape(int ch) {
     }
   if  ( (verbose & 8 ) > 0 )
     {
+      flushTTY();
       traceOne = TRUE;
       fprintf(diag, "Paper tape character %d punched\n", ch);
     }
@@ -873,10 +887,9 @@ int readTTY() {
   int ch;
   if   ( ttyi == NULL )
     {
-      if  ( (verbose & 1) > 1 )
-	fprintf(diag, "Opening teletype input file %s\n", ttyInPath);
       if  ( (ttyi = fopen(ttyInPath, "rb")) == NULL )
 	{
+	  flushTTY();
           printf("*** %s ", ERR_FOPEN_TTYIN_FILE);
           perror(ttyInPath);
           putchar('\n');
@@ -884,21 +897,29 @@ int readTTY() {
 	  /* NOT REACHED */
         }
       else if ( (verbose & 1) > 0 )
-	fprintf(diag,"Teletype input file %s opened\n", TTYIN_FILE);
+	{
+	  flushTTY();
+	  fprintf(diag,"Teletype input file %s opened\n", TTYIN_FILE);
+	}
     }
     if  ( (ch = fgetc(ttyi)) != EOF )
       {
 	if ( (verbose & 8 ) > 0 )
 	  {
+	    flushTTY();
 	    traceOne = TRUE;
 	    fprintf(diag, "Read character %d from teletype\n", ch);
 	  }
+	putchar(ch); // local echoing assumed
         return ch;
       }
     else
       {
         if  ( (verbose & 1) > 0 )
-	  fprintf(diag, "Run off end of teleprinter input\n");
+	  {
+	    flushTTY();
+	    fprintf(diag, "Run off end of teleprinter input\n");
+	  }
         tidyExit(EXIT_TTYSTOP);
       }
 }
@@ -907,6 +928,7 @@ void writeTTY(int ch) {
   int ch2 = ( ((ch &= 127) == 10 ) || ((ch >= 32) && (ch <= 122)) ? ch : -1 );
   if  ( (verbose & 8) > 0 )
     {
+      flushTTY();
       traceOne = TRUE;
       fprintf(diag, "Character %d output to teletype", ch);
       if  ( ch2 == -1 )
@@ -916,6 +938,14 @@ void writeTTY(int ch) {
     }
     if  ( ch2 != -1 )
       putchar((lastttych = ch2));
+}
+
+void flushTTY() {
+  if  ( (lastttych != -1) && (lastttych != '\n') )
+    {
+      putchar('\n');
+      lastttych = -1;
+    }
 }
 
 /**********************************************************/
