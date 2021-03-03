@@ -4,7 +4,7 @@
    "comment" calculate the date of the week on which any date falls, for
              years >= 0AD using Zeller{s congruences;
 
-   "comment" Andrew Herbert 1 July 2012;
+   "comment" Andrew Herbert 25 February 2021;
 
    "integer" day, month, year, which, i;
 
@@ -73,18 +73,24 @@
    "integer" "procedure" gregorian (day, month, year);
       "value" day, month, year; "integer" day, month, year;
    "begin"
-      "integer" y;
-      y := "if" month < 3 "then" year-1 "else" year;
-      gregorian := mod ((day + (26 * (month + 1) "div" 10) + y + (y "div" 4) +
-                        6 * (y "div" 100) + (y "div" 400)), 7)
+      "if" month < 3 "then"
+          "begin"
+              year := year - 1;
+	      month := month + 12
+	  "end";
+      gregorian := mod ((day + (26 * (month + 1) "div" 10) + year + (year "div" 4) +
+                        6 * (year "div" 100) + (year "div" 400)), 7)
    "end";
 
    "integer" "procedure" julian (day, month, year);
       "value" day, month, year; "integer" day, month, year;
    "begin"
-      "integer" y;
-      y := "if" month < 3 "then" year-1 "else" year;
-      julian := mod ((day + (26 * (month + 1) "div" 10) + y + (y "div" 4) +5), 7)
+      "if" month < 3 "then"
+          "begin"
+	      year := year - 1;
+	      month := month +12
+	  "end";
+      julian := mod ((day + (26 * (month + 1) "div" 10) + year + (year "div" 4) + 5), 7)
    "end";
 
    "comment" print titles;
@@ -142,7 +148,9 @@
 		"end"
 "end"
 
-15 7 2020
+26 02 2021
 30 03 1954
+24 01 2021
+24 04 2021
 -1 0 0
 

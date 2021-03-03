@@ -33,11 +33,12 @@ converted to ASCII using from900text.
 At the end of a run of 900sim.py .reader is updated to contain any unconsumed input 
 and .store is updated with the new contents of the store.  
 
-Usage: emu900  [options] [ ptr [ ptp [ tty ]]]
+Usage: emu900  [options] [ ptr [ ptp [ tty [ plot ]]]]
 
    ptr is file containing paper tape reader input.  Defaults to .reader.
    ptp is file to be used for paper tape punch output.  Defaults to .punch.
    tty is file to be used for teletype input. Defaults to .ttyin.
+   plot is file to be used for plotter output in PNG format. Defaults to .paper.
 
    Verbosity is controlled by the -v option:
   
@@ -61,11 +62,21 @@ Usage: emu900  [options] [ ptr [ ptp [ tty ]]]
   
 The source code for the programs is in the directory src.
   
-There are scripts algol.sh, 903fortran.sh 905fortran.sh to run example programs 
-which can be found in src/algol (Elliott Algol60), src/903fortran (Elliott FORTRAN
-II), src/905fortran (Elliott FORTRAN IV).
+There are scripts masdalgol.sh, ajhalgol.sh, ajhalgollibmode.sh, 903fortran.sh
+905fortran.sh to run example programs which can be found in src/algol (Elliott
+Algol60), src/903fortran (Elliott FORTRAN II), src/905fortran (Elliott FORTRAN IV).
+
+masdalgol is Elliott 16K Load and Go Algol Issue 5 modified to accept { and } as
+string quotes.
+
+ajhalgol is a 16K Load and Go Algol system built by Andrew Herbert using Algol
+Issue 6 sources and removes a number of restrictions from the implementation. It
+also accepts { } as string quotes.
+
+ajhalgollibmode runs ajhalgol in library mode.  This is needed by plotting programs
+such as curves.txt in the src/algol directory.
   
-There are also .dox / .pdf files containing a short "manual" for each of langauges
+There are .docx / .pdf files containing a short "manual" for each of langauges
   
 The script x3.sh runs the Elliott 900 functional test program X3.
 
