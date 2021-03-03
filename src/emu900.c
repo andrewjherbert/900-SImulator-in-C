@@ -92,7 +92,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <signal.h>
-
+#include <png.h>
 
 /**********************************************************/
 /*                         DEFINES                        */
@@ -196,7 +196,15 @@ int fCount[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // function code counts
 /* Tracing */
 int traceOne      = FALSE; // TRUE => trace current instruction only
 
+/* Plotter */
+#define PAPER_WIDTH 3500
+#define PAPER_HEIGHT 3500
 
+unsigned char *plotterPaper = NULL;    // != NULL => plotter has been used.
+  
+int plotterPenX,plotterPenY,plotterPenDown,plotterUsed;
+int plotterPaperWidth = PAPER_WIDTH;
+int plotterPaperHeight = PAPER_HEIGHT;
 
 /**********************************************************/
 /*                         FUNCTIONS                      */
@@ -217,8 +225,11 @@ void writeStore();      // dump out store image
 void printDiagnostics(int i, int f, int a); // print diagnostic information for current instruction
 void printTime(long long us);  // print out time counted in microseconds
 void printAddr(FILE *f, int addr); // print address in m^nnn format
-  
-int readTape();         // red from paper tape
+
+void movePlotter(int bits);  // Move the plotter pen
+void setupPlotter(void);     // Clear paper to white pixels
+void savePlotterPaper(void); // Write paper image to paper.png
+int readTape();         // read from paper tape
 void punchTape(int ch); // punch to paper tape
 int readTTY();          // read from teletype
 void writeTTY(int ch);  // write to teletype
@@ -235,6 +246,7 @@ int makeIns(int m, int f, int a); // help for loadII
 void main (int argc, char **argv) {
    signal(SIGINT, catchInt); // allow control-C to end cleanly
    decodeArgs(argc, argv);   // decode command line and set options etc
+   setupPlotter();
    emulate();                // run emulation
 }
 
@@ -300,8 +312,8 @@ void decodeArgs (int argc, char **argv) {
    if  ( (verbose & 1) > 0 )
      {
        fprintf(diag, "Options are:%s\n", buffer);
-       fprintf(diag, "Paper tape will be read from % s\n", ptrPath);
-       fprintf(diag, "Paper tape will be punched to % s\n", ptpPath);
+       fprintf(diag, "Paper tape will be read from %s\n", ptrPath);
+       fprintf(diag, "Paper tape will be punched to %s\n", ptpPath);
        fprintf(diag, "Teletype input will be read from %s\n", ttyInPath);
      };
 }
@@ -506,7 +518,6 @@ void emulate () {
 	      long long al  = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
 	      long long ql  = qReg;
 	      long long aql = (al << 18) | ql;
-	      int i;
 	      
 	      if   ( places <= 2047 )
 	        {
@@ -542,7 +553,7 @@ void emulate () {
 
 		    case 2048: // read from tape reader
 		      { 
-	                int ch = readTape(); int a = aReg;
+	                int ch = readTape(); 
 	                aReg = ((aReg << 7) | ch) & MASK18;
 			emTime += 4000; // assume 250 ch/s reader
 	                break;
@@ -554,7 +565,22 @@ void emulate () {
 	                aReg = ((aReg << 7) | ch) & MASK18;
 			emTime += 100000; // assume 10 ch/s teletype
 	                break;
-	              } 
+	              }
+
+		  case 4864: // send to plotter
+		    
+		      movePlotter(aReg );
+		      /*      if(aReg & 0x30)
+		      {
+			  emTime += 100000;  // assume 10 pen up or down / second
+		      }
+		      else
+		      {
+			  emTime += 3333;   // assume 300 steps/second
+		      }
+		      */
+		  
+		      break;
 
 	            case 6144: // write to paper tape punch 
 	              punchTape(aReg & 255);
@@ -797,9 +823,163 @@ void tidyExit (int reason) {
       if  ( pun  != NULL ) fclose(pun);
       if  ( ttyi != NULL ) fclose(ttyi);
     }
+
+  if(plotterPaper != NULL) savePlotterPaper();
   if ( (verbose & 1) > 0) printf("Exiting %d\n", reason);
   exit(reason);
 }
+
+
+
+/**********************************************************/
+/*                      GRAPH PLOTTER                     */
+/**********************************************************/
+void setupPlotter(void) {
+
+    // Using 24bit R,G,B so 3 bytes per pixel.
+    plotterPaper = calloc(3,plotterPaperWidth * plotterPaperHeight);
+
+    if(plotterPaper != NULL)
+    {
+	// Set to all 0xFF for white paper.
+	memset(plotterPaper,0xFF,3 * sizeof(char) * 3500 * 3500);
+    }
+    plotterPenX = 1500;
+    plotterPenY = 3300;
+    plotterPenDown = FALSE;
+}
+
+void savePlotterPaper(void)
+{
+    int width = 3500;
+    int height = 3500;
+    char *title = "Elliott 903 Plotter Output";
+    int y;
+    FILE *fp;
+    png_structp png_ptr;
+    png_infop info_ptr;
+    png_bytep row;
+
+    if(plotterPaper == NULL) return;
+    
+	// Open file for writing (binary mode)
+	fp = fopen("paper.png", "wb");
+	if (fp == NULL) {
+		fprintf(stderr, "Could not open file paper.png for writing\n");
+		goto finalise;
+	}
+
+	// Initialize write structure
+	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if (png_ptr == NULL) {
+		fprintf(stderr, "Could not allocate write struct\n");
+		goto finalise;
+	}
+
+	// Initialize info structure
+	info_ptr = png_create_info_struct(png_ptr);
+	if (info_ptr == NULL) {
+		fprintf(stderr, "Could not allocate info struct\n");
+		goto finalise;
+	}
+
+	// Setup Exception handling
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		fprintf(stderr, "Error during png creation\n");
+		goto finalise;
+	}
+
+	png_init_io(png_ptr, fp);
+
+	// Write header (8 bit colour depth)
+	png_set_IHDR(png_ptr, info_ptr, width, height,
+			8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+	// Set title
+	if (title != NULL) {
+		png_text title_text;
+		title_text.compression = PNG_TEXT_COMPRESSION_NONE;
+		title_text.key = "Title";
+		title_text.text = title;
+		png_set_text(png_ptr, info_ptr, &title_text, 1);
+	}
+
+	png_write_info(png_ptr, info_ptr);
+
+	// Allocate memory for one row (3 bytes per pixel - RGB)
+	row = (png_bytep) malloc(3 * width * sizeof(png_byte));
+
+	// Write image data
+
+	for (y=0 ; y<height ; y++) {
+
+		png_write_row(png_ptr, &plotterPaper[y * 3500 * 3]);
+	}
+
+	// End write
+	png_write_end(png_ptr, NULL);
+
+	finalise:
+	if (fp != NULL) fclose(fp);
+	if (info_ptr != NULL) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
+	if (png_ptr != NULL) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+	if (row != NULL) free(row);
+
+
+}
+
+void movePlotter(int bits) {
+static int firstCall = TRUE;
+int address;
+
+if(firstCall)  // Only try once !
+   {
+       setupPlotter();
+       firstCall = FALSE;
+   }
+
+if(plotterPaper == NULL) return;   // Paper allocation failed.
+
+
+
+if(bits & 1)
+  {
+    if(plotterPenX <  3500) plotterPenX+=1;
+  }
+if(bits & 2)
+  {
+
+    if(plotterPenX > 0) plotterPenX-=1;
+  }
+if(bits & 8)
+  {
+    plotterPenY+=1;
+  }
+if(bits & 4)
+  {
+    plotterPenY-=1;
+  }
+
+if(bits & 16) plotterPenDown = FALSE;
+if(bits & 32) plotterPenDown = TRUE;
+
+if(plotterPenDown)
+  {
+    // Check if pen is over the paper.
+    if((plotterPenY >= 0) && (plotterPenY < 3500))
+      {
+	address = (plotterPenY*3500*3)+(plotterPenX*3);
+	// Three bytes are for R,G,B.  Set all to zero for black pen.
+	plotterPaper[address++] = 0x0;
+	plotterPaper[address++] = 0x0;
+	plotterPaper[address  ] = 0x0;
+      }
+  }
+
+}
+
+
 
 
 /**********************************************************/
@@ -844,6 +1024,7 @@ int readTape() {
         tidyExit(EXIT_RDRSTOP);
 	/* NOT REACHED */
       }
+  return 0;   // Too keep gcc happy
 }
 
 /* paper tape punch */
@@ -922,6 +1103,7 @@ int readTTY() {
 	  }
         tidyExit(EXIT_TTYSTOP);
       }
+    return 0;   // Too keep gcc happy
 }
 
 void writeTTY(int ch) {
