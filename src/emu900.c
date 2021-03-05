@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 03/03/2021
+// Elliott 903 emulator - Andrew Herbert - 05/03/2021
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -20,7 +20,9 @@
 // ptp is file to be used for paper tape punch output.  Defaults to .punch.
 // tty is file to be used for teletype input. Defaults to .ttyin.
 // plot is the file to be use for plotter output (png format). Defaults to
-// .paper. 
+// .paper.
+//
+// On a dynamic stop the current address is output to the file .stop.
 
 // Verbosity is controlled by the -v option:
 //
@@ -113,6 +115,7 @@
 #define TTYIN_FILE ".ttyin"    // teletype input file path
 #define STORE_FILE ".store"    // store image - n.b., ERR_FOPEN_STORE_FILE
 #define PLOT_FILE  ".paper"    // plotter output as png file
+#define STOP_FILE  ".stop"     // dynamic stop address
 
 #define USAGE "Usage: emu900[-adjmrstv] <reader file> <punch file> <teletype file>\n"
 #define ERR_FOPEN_DIAG_LOGFILE  "Cannot open log file"
@@ -121,6 +124,7 @@
 #define ERR_FOPEN_TTYIN_FILE    "Cannot open teletype input file  - "
 #define ERR_FOPEN_PLOT_FILE     "Could not open plotter output file for writing - "
 #define ERR_FOPEN_STORE_FILE    "Could not open store dump file for writing - "
+#define ERR_FOPEN_STOP_FILE     "Could not open stop file for writing - "
 
 // Booleans
 #define TRUE  1
@@ -204,9 +208,9 @@ int aReg  = 0, qReg  = 0;
 int bReg  = BREGLEVEL1, scReg = SCRLEVEL1; // address in store of B register and SCR
 int lastSCR; // used to detect dynamic loops
 int level = 1; // priority level
-int iCount = 0; // count of instructions executed
+long long iCount = 0L; // count of instructions executed
 int instruction, f, a, m;
-int fCount[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // function code counts
+long long int fCount[] = {0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L}; // function code counts
 
 /* Tracing */
 int traceOne      = FALSE; // TRUE => trace current instruction only
@@ -365,7 +369,10 @@ void emulate () {
 
   int exitCode      = EXIT_SUCCESS; // reason for terminating
   int tracing       = FALSE; // true if tracing enabled
-  long long emTime   = 0L; // crude estimate of 900 elapsed time
+  long long emTime  = 0L; // crude estimate of 900 elapsed time
+  int s             = -1; // next SCR
+
+  FILE *stop; // used to open stopFile
 
   // set up machine ready to execute
   clearStore();  // start with a cleared store
@@ -394,9 +401,9 @@ void emulate () {
 	  flushTTY();
   	  tidyExit(EXIT_FAILURE);
         }
-      store[scReg]++;                 // increment SCR
+      s = ++store[scReg];                 // increment SCR
 
-      // fetch and decode instruction
+      // fetch and decode instruction;
       instruction = store[lastSCR];
       f = (instruction >> FN_SHIFT) & FN_MASK;
       a = (instruction & ADDR_MASK) | (lastSCR & MOD_MASK);
@@ -461,7 +468,7 @@ void emulate () {
   	    if   ( aReg == 0 )
 	      {
 	        traceOne = tracing && ((verbose & 2) > 0);
-	        store[scReg] = m;
+	        store[scReg] = s = m;
 		emTime += 28;
 	      }
 	    if  ( aReg > 0 )
@@ -471,7 +478,7 @@ void emulate () {
 	    break;
 
           case 8: // Jump unconditional
-	    store[scReg] = m;
+	    store[scReg] = s = m;
 	    emTime += 23;
 	    break;
 
@@ -479,7 +486,7 @@ void emulate () {
 	    if   ( aReg >= BIT18 )
 	      {
 	        traceOne = tracing && (verbose & 2);
-		store[scReg] = m;
+		store[scReg] = s = m;
 		emTime += 25;
 	      }
 	    emTime += 20;
@@ -664,7 +671,7 @@ void emulate () {
         }
 
         // check for dynamic stop
-        if   ( store[scReg] == lastSCR )
+        if   ( s == lastSCR ) 
 	  {
 	    flushTTY();
 	    if   ( verbose & 1 )
@@ -673,8 +680,18 @@ void emulate () {
 	        printAddr(diag, lastSCR);
 	         fputc('\n', diag);
 	       }
-	     exitCode = EXIT_DYNSTOP;
-	     break;
+	    if ( (stop = fopen(STOP_FILE, "w")) == NULL )
+	      {
+		fprintf(stderr, ERR_FOPEN_STOP_FILE);
+		perror(STOP_FILE);
+		exit(EXIT_FAILURE);
+		/* NOT REACHED */
+	      }
+
+	    fprintf(stop, "%d", lastSCR);
+	    fclose(stop);
+	    exitCode = EXIT_DYNSTOP;
+	    break;
 	  }
     } // end while fetching and decoding instructions
 
@@ -682,13 +699,14 @@ void emulate () {
   if   ( verbose & 1 ) // print statistics
     {
       int i;
+      fprintf(diag, "exit code %d\n", exitCode);
       fprintf(diag, "Function code count\n");
       for ( i = 0 ; i <= 15 ; i++ )
 	{
-	  fprintf(diag, "%4d: %8d (%3d%%)", i, fCount[i], (fCount[i] * 100) / iCount);
+	  fprintf(diag, "%4d: %8lld (%3lld%%)", i, fCount[i], (fCount[i] * 100L) / iCount);
 	  if  ( ( i % 4) == 3 ) fputc('\n', diag);
 	}
-       fprintf(diag, "%d instructions executed in ", iCount);
+       fprintf(diag, "%lld instructions executed in ", iCount);
        printTime(emTime);
        fprintf(diag, " of simulated time\n");
      }
@@ -778,7 +796,7 @@ void writeStore () {
    int an = ( aReg >= BIT18 ? aReg - BIT19 : aReg); 
    int qn = ( qReg >= BIT18 ? qReg - BIT19 : qReg);
    int bn = ( store[bReg] >= BIT18 ? store[bReg] - BIT19 : store[bReg]);
-   fprintf(diag, "%10d   ", iCount); // instruction count
+   fprintf(diag, "%10lld   ", iCount); // instruction count
    printAddr(diag, lastSCR);    // SCR and registers
    if   (instruction & BIT18 )
      {

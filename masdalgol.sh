@@ -1,30 +1,52 @@
 #!/bin/sh
 set +x
-rm -f .reader .punch .ascii
-#echo loading Algol
-./emu900 -v1 alg16klg_masd
-#echo convert input tape
+rm -f .reader .punch .ascii .save .paper .translate
+echo loading Algol
+#cp alg16klg_ajh_store .store
+./emu900 alg16klg_masd
+cp .store alg16klg_masd_store
+echo convert input tape
 ./to900text src/algol/$1
-#echo run translator
-./emu900 -v1 -j8
+echo run translator in library mode
+./emu900 -j12 >.translate
+cp .reader .save
 if [ $? != 0 ]
 then exit $?
 fi
-echo 
-echo
-#echo run interpreter
-./emu900 -v1 -j10
-touch .punch
-./from900text
-if  [ ! -s .ascii ]
+cat .translate
+grep --silent "^FAIL$" .translate
+if [ $? != 0 ]
 then
-    echo "*** No punch output ***"
     echo
+    echo scan library
+    ./emu900 -j9 algol_tape3_iss5_plotting .reader
+    echo 
+    echo
+    if [ $? != 0 ]
+    then exit $?
+    fi
+    echo run interpreter
+    ./emu900 -j10 .save
+    touch .punch
+    ./from900text
+    if  [ ! -s .ascii ]
+    then
+        echo "*** No punch output ***"
+        echo
+    else
+        echo "*** Punch output ***"
+        echo
+        cat .ascii
+    fi
+    if [ -e .paper ]
+    then
+    open -a preview .paper
+    fi
 else
-    echo "*** Punch output ***"
     echo
-    cat .ascii
-fi
+    echo Abandoned after translation errors
+    echo
+ fi
 
 
 
