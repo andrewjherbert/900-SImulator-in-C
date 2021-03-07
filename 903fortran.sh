@@ -1,10 +1,19 @@
 #!/bin/sh
 set +x
+if [ "$1" == "" ]
+then
+    echo demo file name missing
+    exit
+elif [ ! -e "demos/903fortran/$1.txt" ]
+then
+    echo $1 not found in demos/903fortran
+    exit
+fi
 rm -f .reader .punch .ascii .translate
 echo loading Fortran
-./emu900 fort16klg_iss5
+cp bin/903fortran.fort16klg_iss5_store .store
 echo convert input tape $1
-./to900text src/903fortran/$1
+./to900text demos/903fortran/$1.txt
 echo read program
 ./emu900 -j8 >.translate
 if [ $? != 0 ]

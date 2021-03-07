@@ -1,12 +1,19 @@
 #!/bin/sh
 set +x
+if [ "$1" == "" ]
+then
+    echo demo file name missing
+    exit
+elif [ ! -e "demos/903algol/$1.txt" ]
+then
+    echo  $1 not found in demos/903algol
+    exit
+fi
 rm -f .reader .punch .ascii .save .paper .translate
 echo loading Algol
-#cp alg16klg_ajh_store .store
-./emu900 alg16klg_masd
-cp .store alg16klg_masd_store
+cp bin/903algol/alg16klg_masd_store .store
 echo convert input tape
-./to900text src/algol/$1
+./to900text demos/903algol/$1.txt
 echo run translator in library mode
 ./emu900 -j12 >.translate
 cp .reader .save
@@ -19,7 +26,7 @@ if [ $? != 0 ]
 then
     echo
     echo scan library
-    ./emu900 -j9 algol_tape3_iss5_plotting .reader
+    ./emu900 -j9 bin/903algol/algol_tape3_iss5_plotting .reader
     echo 
     echo
     if [ $? != 0 ]
