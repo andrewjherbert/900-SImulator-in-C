@@ -1,8 +1,8 @@
 #!/bin/sh
 set +x
-if [ "$1" == "" ]
+if [ "$1" = "" ]
 then
-    echo demo file name missing
+    echo "Usage 903fortran demo"
     exit
 elif [ ! -e "demos/903fortran/$1.txt" ]
 then

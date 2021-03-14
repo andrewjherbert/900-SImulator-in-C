@@ -1,8 +1,8 @@
 #!/bin/sh
 set +x
-if [ "$1" == "" ]
+if [ "$1" = "" ]
 then
-    echo demo file name missing
+    echo "Usage: 903algol.sh demo"
     exit
 elif [ ! -e "demos/905fortran/$1.txt" ]
 then
@@ -13,7 +13,7 @@ rm -rf .reader .punch .reverse .save .ascii .linker
 #echo load compiler
 cp bin/905fortran/905fortran_iss6_store .store
 #echo convert input tape $1
-to900text demos/905fortran/$1.txt
+./to900text demos/905fortran/$1.txt
 #echo compile program
 ./emu900 -j16 .reader .punch bin/905fortran/O0R
 echo
