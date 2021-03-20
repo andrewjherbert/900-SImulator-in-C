@@ -270,12 +270,9 @@ int makeIns(int m, int f, int a); // help for loadII
 
 
 int main (int argc, const char **argv) {
-  printf("main\n");
    signal(SIGINT, catchInt); // allow control-C to end cleanly
    diag = stderr;            // set up diagnostic output for reports
-   printf("decodeArgs\n");
    decodeArgs(argc, argv);   // decode command line and set options etc
-   printf("emulate\n");
    emulate();                // run emulation
 }
 
@@ -960,7 +957,6 @@ void tidyExit (int reason) {
   if ( verbose & 1 ) printf("Exiting %d\n", reason);
   exit(reason);
 }
-
 
 
 /**********************************************************/

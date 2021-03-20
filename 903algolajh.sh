@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x
+set +x
 if [ "$1" = "" ]
 then
     echo "Usage 903algolajh demo [options]"
