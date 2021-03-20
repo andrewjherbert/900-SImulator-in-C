@@ -2,7 +2,7 @@
 set +x
 if [ "$1" = "" ]
 then
-    echo "Usage 903fortran demo"
+    echo "Usage 903fortran demo [options]"
     exit
 elif [ ! -e "demos/903fortran/$1.txt" ]
 then
@@ -15,17 +15,17 @@ cp bin/903fortran.fort16klg_iss5_store .store
 echo convert input tape $1
 ./to900text demos/903fortran/$1.txt
 echo read program
-./emu900 -j8 >.translate
+./emu900 -j=8 $2 >.translate
 if [ $? != 0 ]
 then exit $?
 fi
 if [ ! -s .translate ]
 then
     echo signal program complete
-    ./emu900 -j10
+    ./emu900 -j=10
     echo
     echo run program
-    ./emu900 -j11
+    ./emu900 -j=11
     echo
     echo
     touch .punch

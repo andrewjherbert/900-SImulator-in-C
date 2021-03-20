@@ -1,0 +1,7 @@
+Diagnostic logging directed to log.txt
+Paper tape will be read from .reader
+Paper tape will be punched to .punch
+Teletype input will be read from .ttyin
+Plotter output will go to .paper
+Store image will be read from .store
+Execution will commence at address 0^8181

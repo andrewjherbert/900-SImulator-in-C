@@ -1,10 +1,11 @@
 # makefile for Elliott 900 emulator
 CC = gcc
 SRC = ./src
-PNG = `pkg-config libpng --cflags --libs`
+PNG = `pkg-config libpng  --cflags --libs`
+POPT = `pkg-config popt --cflags --libs`
 
 emu900: $(SRC)/emu900.c
-	$(CC) -Wall -Wno-main -o emu900 $(SRC)/emu900.c $(PNG)
+	$(CC) -Wall -Wno-main -o emu900 $(SRC)/emu900.c $(PNG) $(POPT)
 
 from900text: $(SRC)/from900text.c
 	$(CC) $(SRC)/from900text.c -o from900text
@@ -23,4 +24,6 @@ all: emu900 from900text to900text reverse
 
 clean:
 	rm -f $(SRC)/*~
+	rm -f *~
+	rm -f .ascii .linker .punch .reader .reverse .stop .store .translate .plot.png
 

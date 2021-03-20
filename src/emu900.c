@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 05/03/2021
+// Elliott 903 emulator - Andrew Herbert - 19/03/2021
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -8,88 +8,91 @@
 
 // Plotter support added by Peter Onion 02/03/2021
 
-// Ths program is written C--, i.e. a strict subset of ANSI C without using
-// pointer arithmetic, or struct
-//                     but I could not resist the C++ comment convention
-
 // Code assumes int is >= 19 bits and long int >= 38 bits.
 
-// Usage: emu900  [options] [ ptr [ ptp [ tty [ plot]]]]
+// Pre-requistes:
+//    LIBOPT for command line decoding
+//    LIBPNG for plotter output
+
+// Usage: emu900 [-d?] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
+//      [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
+//      [-j|-jump=integer] [-m|-monitor=address] [-r|-rstart=integer]
+//      [-s|-start=address] [-t|-trace=integer] [-w|-width=integer]
+//      [-v|-verbose=integer] [-?|--help] [--usage]
+
+// Verbosity is controlled by the -v argument.  The level of reporting can be selected
+// by ORing the following values:
 //
-// ptr is file containing paper tape reader input.  Defaults to .reader.
-// ptp is file to be used for paper tape punch output.  Defaults to .punch.
-// tty is file to be used for teletype input. Defaults to .ttyin.
-// plot is the file to be use for plotter output (png format). Defaults to
-// .paper.
+//    1      -- general diagnostic reports, e.g., dynamic stop, etc
+//    2      -- report jumps taken in traces
+//    4      -- report every instruction executed in traces 
+//    8      -- report input/output characters in traces
 //
-// On a dynamic stop the current address is output to the file .stop.
+// By default diagnostic reports are written to stderr, unless the dfile argument is
+// present in which case the reports are written to the file log.txt.
 
-// Verbosity is controlled by the -v option:
-//
-//    1      -- diagnostic reports, e.g., dynamic stop, etc
-//    2      -- jumps taken
-//    4      -- each instruction
-//    8      -- input/output
+// At beginning reads in contents of store from the file .store by default unless
+// overridden by the -store argument. If the file cannot be found the store is set to
+// all zeros. At the end of run the emulator dumps out contents of store to the store
+// file, unless there have been catastrophic errors. This is to simulate
+// retention of data in core store between entry points.
 
-// Options are:
-//    -vn      set verbosity to n, e.g., v4
-//    -tn      turn on diagnostics after n instructions, e.g., t888
-//    -sn      when execution first reaches location n turn on diagnostics
-//    -rn      when execution first reaches location n turn on -v7 and abandon
-//                 after 1000 instructions  
-//    -an      abandon execution after n instructions, e.g., a9999
-//    -d       write diagnostics to file log.txt rather than stdout
-//    -m       monitor word n for changes, e.g., m100
+// Paper tape input from the file .reader unless overridden by the -reader argument on
+// the command line. At the end it copies any unconsumed  input back to the file
+// overwriting previous content, unless there have been catastrophic errors. This is to
+// emulate leaving a tape in the reader between successive runs.
 
-// There is a limit of REEL output characters on paper tape or teletype.
-// The default for abandon is approximately 1.5 days of computing.
-
-// can also write m^n for word n of (8K) store module m to express value n*8K+m.
-
-// At beginning reads in contents of store from file .store if available,
-// otherwise core is set to all zeros. At end, dumps out contents of store
-// to .store, unless catastrophic errors. This is to simulate retention of
-// data in core store between entry points.
-
-// By default reads paper tape input from file .reader unless overridden by
-// reader ptrfile argument on the command line. At end copies any unconsumed
-// paper tape input to  .reader overwriting previous content, unless
-// catastrophic errors, overwriting existing contents. This is to emulate
-// leaving a tape in the reader between successive runs.
-
-// The input file should be raw bytes representing eight bit paper tape
+// The input file should be a raw byte stream representing eight bit paper tape
 // codes, either binary of one of the Elliott telecodes.  There is a companion
 // program "to900text" which converts a UTF-8 character file to its equivalent
-// in Elliott 900 telecode. (Be aware that a UTF-8 file which looks like ASCII
-// might have an invisible BOM code at the beginning, so generally it is always
-// safer to run text input tapes through to900text.
+// in Elliott 900 telecode. 
 
-// Teletype input is handled similarly, taken from the file .ttyin unless
-// overridden by teleprinter file argument on the command line. Teletype output
-// is sent to stdout.  The emulator does not emulate interactive use of the
-// teletype very well.
+// Teletype input is taken from the file .ttyin unless overridden by the -ttyin
+// argument on the command line. Teletype output is sent to stdout.  
 
-// By default paper tape output is send to file .punch, unless overridden by
-// punch file argument on the command line.  There is a companion program
-// "from900text" which converts a file containing 900 telecode output to it's
-// UTF-8 equivalent. (Note since 900 telecode includes ASCII and cariage returns
-// it is generally best to convert to a normal ASCII tool before processing further.
+// Paper tape output is send to the file .punch, unless overridden by a -punch argument
+// on the command line.  The output is a byte stream of binary characters as would
+// have been output to the physical punch.  There is a companion program "from900text"
+// which converts a file containing 900 telecode output to it's UTF-8 equivalent.
+
+// There is a limit of output characters on paper tape or teletype roughly equal to a
+// reel of paper tape (120,000 characters).
+
+// Plotter output is sent to the file .plot.png unless overridden by a -plot argument.
+// The output is in a PHG format.
+
+// The size of the plotting area can be set using the -width and -height command line
+// arguments.  These set the size in plotter steps.
 
 // By default the simulator jumps to 8181 to start execution, unless overriden by
-// -j option on the command line.
+// -jump argument on the command line.  The jump address can be in the range 0-8191.
 
-// A limit on maximum number of instructions to be executed can be set using
-// the -limit command line option.
+// The emulation terminates either when a dynamic stop is detected or about 1.5 days of
+// emulated real time have elapsed.  On a dynamic stop the emulator writes the stop
+// address to the file .stop. 
 
-// A trace in file .trace will be written if -trace command line option is
-// present.  There is a companion program "traceprint.py" that produces am
-// interpreted listing of the trace.
+// A smaller limit on maximum number of instructions to be executed can be set using
+// the -abandon command line argument.
+
+// A specific store location can be monitored for be written to using the -monitor
+// command line argument.  The address must not exceed the available store size.
+
+// The -start argument starts tracing from the specified location. -trace turns on
+// tracing after the specified number of instructions have been executed. -rtrace is
+// like -start but stops tracing after a further 1000 instructions have been executed.
+// -trace overrides -trace.  -trace/-rtrace and -start can both be specified and tracing
+// will start from whichever condition occurs first.  The address part of -start must not
+// exceed the available store size.
+
+// Addresses for the -start and -monitor arguments can be written in the form m^a where
+// m represents an 8K store module number and a an address within the selected store
+// module.
 
 // The program exits with an exit code indicating the reason for completion,
 // e.g., 0 = dynamic stop, 1 = run out of paper tape input, etc.2 = run out of
 // teletype input, 3 = reached execution limit, 255 = catastropic error.  The
-// contents of .store, .reader and  .punch are undefined after a catastrophic
-// error.
+// contents of the store,reader, punch and plotter files are undefined after a
+// catastrophic error.
 
 /**********************************************************/
 /*                     HEADER FILES                       */
@@ -102,6 +105,7 @@
 #include <ctype.h>
 #include <signal.h>
 #include <png.h>
+#include <popt.h>
 
 /**********************************************************/
 /*                         DEFINES                        */
@@ -114,7 +118,7 @@
 #define PUN_FILE   ".punch"    // paper tape punch output file path
 #define TTYIN_FILE ".ttyin"    // teletype input file path
 #define STORE_FILE ".store"    // store image - n.b., ERR_FOPEN_STORE_FILE
-#define PLOT_FILE  ".paper"    // plotter output as png file
+#define PLOT_FILE  ".plot.png" // plotter output as png file
 #define STOP_FILE  ".stop"     // dynamic stop address
 
 #define USAGE "Usage: emu900[-adjmrstv] <reader file> <punch file> <teletype file>\n"
@@ -160,6 +164,9 @@
 
 #define REEL 10*12*1000  // reel of paper tape in characters (1,000 feet, 10 ch/in)
 
+#define PAPER_WIDTH  3600
+#define PAPER_HEIGHT 3600
+
 
 /**********************************************************/
 /*                         GLOBALS                        */
@@ -171,13 +178,13 @@ int           bits18 =      262144;  // modulus for 18 bit operations
 long long int bits36 = 68719476736L; // modulus for 64 bit operations
 
 /* Diagnostics related variables */
-FILE *diag;              // diagnostics output - se to either  stderr or .log
+FILE *diag      = NULL;      // diagnostics output - set to either  stderr or .log
 
 /* File handles for peripherals */
-FILE *ptr  = NULL;       // paper tape reader
-FILE *pun  = NULL;       // paper tape punch
-FILE *ttyi = NULL;       // teleprinter input
-FILE *ttyo = NULL;       // teleprinter output
+FILE *ptrFile   = NULL;       // paper tape reader
+FILE *punFile   = NULL;       // paper tape punch
+FILE *ttyiFile  = NULL;       // teleprinter input
+FILE *ttyoFile  = NULL;       // teleprinter output
 
 int verbose   = 0;       // no diagnostics by default
 int diagCount = -1;      // turn diagnostics on at this instruction count
@@ -189,9 +196,10 @@ int monLast   = -1;
 
 /* Input output streams */
 char *ptrPath   = RDR_FILE;    // path for reader input file
-char *ptpPath   = PUN_FILE;    // path for punch output file
+char *punPath   = PUN_FILE;    // path for punch output file
 char *ttyInPath = TTYIN_FILE;  // path for teletype input file
 char *plotPath  = PLOT_FILE;   // path for plotter output
+char *storePath = STORE_FILE;  // path for store image
 
 int lastttych   = -1; // last tty character punched
 int punchCount  = -1; // count of paper tape characters punched
@@ -210,31 +218,29 @@ int lastSCR; // used to detect dynamic loops
 int level = 1; // priority level
 long long iCount = 0L; // count of instructions executed
 int instruction, f, a, m;
-long long int fCount[] = {0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L}; // function code counts
+long long int fCount[] =  // function code counts
+                          {0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L};
 
 /* Tracing */
 int traceOne      = FALSE; // TRUE => trace current instruction only
 
 /* Plotter */
-#define PAPER_WIDTH 3500
-#define PAPER_HEIGHT 3500
-
 unsigned char *plotterPaper = NULL;    // != NULL => plotter has been used.
   
 int plotterPenX, plotterPenY, plotterPenDown, plotterUsed;
-int plotterPaperWidth = PAPER_WIDTH;
+int plotterPaperWidth  = PAPER_WIDTH;
 int plotterPaperHeight = PAPER_HEIGHT;
+
 
 /**********************************************************/
 /*                         FUNCTIONS                      */
 /**********************************************************/
 
 
-void decodeArgs(int argc, char **argv); // decode command line
+void decodeArgs(int argc, const char **argv); // decode command line
+void usage(poptContext optCon, int exitcode, char *error, char *addl);
 void catchInt();        // interrupt handler
-int  argtoi(char* arg); // read numeric part of argument
-void usageError();      // report argument error
-
+int  addtoi(char* arg); // read numeric part of argument
 void emulate();         // run emulation
 void clearStore();      // clear main store
 void readStore();       // read in a store image
@@ -247,7 +253,7 @@ void printAddr(FILE *f, int addr); // print address in m^nnn format
 
 void movePlotter(int bits);  // Move the plotter pen
 void setupPlotter(void);     // Clear paper to white pixels
-void savePlotterPaper(void); // Write paper image to paper.png
+void savePlotterPaper(void); // Write paper image to PLOT_FILE
 int readTape();         // read from paper tape
 void punchTape(int ch); // punch to paper tape
 int readTTY();          // read from teletype
@@ -262,8 +268,9 @@ int makeIns(int m, int f, int a); // help for loadII
 /**********************************************************/
 
 
-int main (int argc, char **argv) {
+int main (int argc, const char **argv) {
    signal(SIGINT, catchInt); // allow control-C to end cleanly
+   diag = stderr;            // set up diagnostic output for reports
    decodeArgs(argc, argv);   // decode command line and set options etc
    emulate();                // run emulation
 }
@@ -279,67 +286,159 @@ void catchInt(int sig, void (*handler)(int)) {
 /**********************************************************/
 
 
-void decodeArgs (int argc, char **argv) {
-   char buffer[3000]; // not checked for overflow
-   int i = 0;
-   char *s;
-   diag = stderr; // default output for diagnostics
-   buffer[0] = '\0'; // null string
-   while  ( (++i < argc)  &&  (*(s = argv[i]) == '-') ) { // process options
-      strcat(buffer, " ");
-      strcat(buffer, s);
-      if  ( *++s == 'd' ) {
-	if  ( !(diag = fopen("log.txt", "w")) ) // diagnostics to file
+void decodeArgs (int argc, const char *argv[])
+{
+  int c;
+  char *buffer = NULL;
+  char number[12];
+  poptContext optCon;
+  struct poptOption optionsTable[] = {
+      {"reader",  '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &ptrPath, 0, "paper tape reader input", "file"},
+      {"punch",   '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &punPath, 0, "paper tape punch output", "file"},
+      {"ttyin",   '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &ttyInPath, 0, "teletype input", "file"},
+      {"plot",    '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &plotPath, 0, "plotter output", "file"},
+      {"store",   '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &storePath, 0, "store image", "file"},
+      {"dfile",   'd',  POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH,
+       0, 1, "diagnostics to file", ""},    
+      {"abandon", 'a',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &abandon, 0, "abandon after n instructions", "integer"},
+      {"height",  'h',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &plotterPaperHeight, 0, "plotter paper height in steps", "integer"},
+      {"jump",    'j',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &opKeys, 2, "jump to address", "integer"},
+      {"monitor", 'm',  POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &buffer, 3, "monitor location", "address"},
+      {"rtrace",  'r',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &diagLimit, 0, "trace 1000 instructions after "
+          "first n", "integer"},
+      {"start",   's',  POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
+       &buffer, 4, "start tracing at location n", "address"},
+      {"trace",   't',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &diagCount, 0, "turn on tracing after n instructions", "integer"},
+      {"width",   'w',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &plotterPaperWidth, 0, "plotter paper width in steps", "integer"},
+      {"verbose", 'v',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &verbose, 0, "verbosity", "integer"},
+      POPT_AUTOHELP
+      POPT_TABLEEND
+    };
+
+  optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
+
+  while ( (c = poptGetNextOpt(optCon)) > 0 ) {
+
+    switch (c) {
+
+    case 1: // -d
+      printf("opening log file\n");
+      if ( ! (diag = fopen(LOG_FILE, "w"))  )
+	{
+	  fprintf(stderr, "Cannot open log file %s:", LOG_FILE);
+	  perror(ERR_FOPEN_DIAG_LOGFILE);
+	  exit(EXIT_FAILURE);
+	  /* NOT REACHED */
+	}
+      fprintf(stderr, "Diagnostics are being sent to file %s\n", LOG_FILE);
+      break;
+
+    case 2: // j address
+      if ( opKeys >= 8192 )
+	usage(optCon, EXIT_FAILURE, "can only jump to addresses less than 8192", NULL);
+      break;
+
+    case 3: // m address (monitor address)
+      monLoc = addtoi(buffer);
+      fprintf(stderr, "%s %d\n", buffer, monLoc);
+      if ( monLoc == -1 )
+	usage(optCon, EXIT_FAILURE, "malformed address", buffer);
+      if ( monLoc >= STORE_SIZE )
+	usage(optCon, EXIT_FAILURE, "monitor address outside store bounds", buffer);
+      break;
+
+    case 4: // s address (trace from location)
+      diagFrom = addtoi(buffer);
+      if ( diagFrom == -1 )
+	usage(optCon, EXIT_FAILURE, "malformed address", buffer);
+      if ( diagFrom >= STORE_SIZE )
+	usage(optCon, EXIT_FAILURE, "tracing start address outside store bounds", buffer);
+      break;
+      
+    default:
+      fprintf(stderr, "internal error in decodeArgs (%d)\n", c);
+      exit(EXIT_FAILURE);
+      /* NOT REACHED */
+    }					 
+  }
+
+  if ( c < -1 ) // bombed out on an error
+    {
+      fprintf(stderr, "%s: %s\n", poptBadOption(optCon, 0), poptStrerror(c));
+      exit(EXIT_FAILURE);
+      /* NOT REACHED */
+    }
+  
+  if ( (buffer = (char *) poptGetArg(optCon)) != NULL ) // check for extra arguments
+       usage(optCon, EXIT_FAILURE, "unexpected argument", buffer);
+
+  poptFreeContext(optCon); // release context
+       
+  // tidy up and report options
+  if ( verbose >= 16 )
+    {
+      sprintf(number, "%d", verbose);
+      usage(optCon, EXIT_FAILURE, "verbosity setting larger than 15", number);
+    }
+  if (diagLimit >= 0 )
+    {
+      diagCount = diagFrom = -1; // -r overides -s, -t
+    }
+  if  ( verbose & 1 )
+     {
+	if ( diag != stderr )
+	  fprintf(diag, "Diagnostic logging directed to %s\n", LOG_FILE);
+        fprintf(diag, "Paper tape will be read from %s\n", ptrPath);
+        fprintf(diag, "Paper tape will be punched to %s\n", punPath);
+        fprintf(diag, "Teletype input will be read from %s\n", ttyInPath);
+        fprintf(diag, "Plotter output will go to %s\n", plotPath);
+	fprintf(diag, "Plotter paper width %d, height %d\n", plotterPaperWidth, plotterPaperHeight);
+        fprintf(diag, "Store image will be read from %s\n", storePath);
+	fprintf(diag, "Execution will commence at address ");
+	printAddr(diag, opKeys);
+	fprintf(diag," (%d)\n", opKeys);
+        if ( abandon >= 0 )
+	  fprintf(diag, "Execution will be abandoned after %d instructions executed\n",
+		    abandon);
+	if ( diagCount >= 0 )
+	  fprintf(diag, "Tracing will start after %d instructions executed\n", diagCount);
+	if ( diagFrom >= 0 )
+	  fprintf(diag, "Tracing will start from location %d onwards\n", diagFrom);
+	if ( diagLimit >= 0 )
+	  fprintf(diag, "Limited tracing will start after %d instructions executed\n",
+		  diagLimit);
+	if ( monLoc >= 0 )
 	  {
-	    perror(ERR_FOPEN_DIAG_LOGFILE);
-	    exit(EXIT_FAILURE);
-	    /* NOTREACHED */
+	    fprintf(diag, "Location ");
+	    printAddr(diag, monLoc);
+	    fprintf(diag, " (%d) will be monitored\n", monLoc);
 	  }
-      }
-      else if  ( *s == 'v' )             // set verbosity
-        verbose   = argtoi(s+1);
-      else if  ( *s == 'a' )             // abandon after n
-        abandon   = argtoi(s+1);
-      else if  ( *s == 'j' )             // initial jump location
-	opKeys    = argtoi(s+1);
-      else if  ( *s == 't' )             // turn on diagnostics after n instructions
-	diagCount = argtoi(s+1);
-      else if  ( *s == 's' )             // turn on diagnostics at address n
-	diagFrom  = argtoi(s+1);
-      else if  ( *s == 'r' )             // as r but only 1000 diagnostics
-        diagLimit = argtoi(s+1);  
-      else if  ( *s == 'm' )             // monitor address
-        monLoc    = argtoi(s+1);
-      else {                             // unknown flag
-	usageError();
-	/* NOT REACHED */
-      } // if
-   } // while
-   // check arguments are reasonable
-   if  ( (monLoc >= STORE_SIZE ) || (diagFrom >= STORE_SIZE)
-	 || (diagLimit >= STORE_SIZE) )
-     {
-        fprintf(stderr, "Diagnostics address outside available store\n");
-        exit(EXIT_FAILURE);
-        /* NOT REACHED */
-     }
-   // check for file arguments
-   if  ( argc >   i ) ptrPath   = argv[i];
-   if  ( argc > ++i ) ptpPath   = argv[i];
-   if  ( argc > ++i ) ttyInPath = argv[i];
-   if  ( argc > ++i ) plotPath  = argv[i];
-   if  ( verbose & 1 )
-     {
-       fprintf(diag, "Options are:%s\n", buffer);
-       fprintf(diag, "Paper tape will be read from %s\n", ptrPath);
-       fprintf(diag, "Paper tape will be punched to %s\n", ptpPath);
-       fprintf(diag, "Teletype input will be read from %s\n", ttyInPath);
-       fprintf(diag, "Plotter output will go to %s\n", plotPath);
-     };
+       }
 }
 
-int argtoi (char *s) {
+void usage (poptContext optCon, int exitcode, char *error, char *addl)
+{
+  poptPrintUsage(optCon, stderr, 0);
+  if (error) fprintf(stderr, "%s: %s\n", error, addl);
+  exit(exitcode);
+}
+
+int addtoi (char *s) {
   int value = 0;
+  int i;
   while  ( *s != '\0' )
     {
       int ch = *s++;
@@ -347,16 +446,13 @@ int argtoi (char *s) {
         value = value * 10 + ch - (int)'0'; 
       else if ( ch == '^' )
         {
-          value = value * 8192 + atoi(s);
-          return value; }
-      else usageError();
+	  if ( (i = atoi(s)) == 0 )
+	    return -1; // atoi failed
+          return value * 8192 + i;
+	}
+      else return -1;
     } // while
   return value;
-}
-
-void usageError () {
-  fprintf(stderr, USAGE);
-  exit(EXIT_FAILURE);
 }
 
 
@@ -378,7 +474,7 @@ void emulate () {
   clearStore();  // start with a cleared store
   readStore();   // read in store image if available
   loadII();      // load initial orders
-  ttyo = stdout; // teletype output to stdout
+  ttyoFile = stdout; // teletype output to stdout
   store[scReg] = opKeys; // set SCR from operator control panel keys
   
   if   ( verbose & 1 )
@@ -467,7 +563,7 @@ void emulate () {
           case 7: // Jump if zero
   	    if   ( aReg == 0 )
 	      {
-	        traceOne = tracing && ((verbose & 2) > 0);
+	        traceOne = tracing && (verbose & 2);
 	        store[scReg] = s = m;
 		emTime += 28;
 	      }
@@ -728,7 +824,7 @@ void clearStore() {
 }
 
 void readStore () {
-  FILE *f  = fopen(STORE_FILE, "r");
+  FILE *f  = fopen(storePath, "r");
   if   ( f != NULL )
     {
       // read store image from file
@@ -737,7 +833,7 @@ void readStore () {
 	{
 	  if  ( i >= STORE_SIZE )
 	    {
-	      fprintf(stderr, "*** %s exceeds store capacity (%d)\n", STORE_FILE, STORE_SIZE);
+	      fprintf(stderr, "*** %s exceeds store capacity (%d)\n", storePath, STORE_SIZE);
 	      exit(EXIT_FAILURE);
 	      /* NOT REACHED */
 	    }
@@ -745,33 +841,33 @@ void readStore () {
 	} // while
       if ( c == 0 )
  	{
-	  fprintf(stderr, "*** Format error in file %s\n", STORE_FILE);
+	  fprintf(stderr, "*** Format error in file %s\n", storePath);
 	  exit(EXIT_FAILURE);
 	  /* NOT REACHED */
         }
       else if ( ferror(f) )
 	{
-	  fprintf(stderr, "*** Error while reading %s", STORE_FILE);
+	  fprintf(stderr, "*** Error while reading %s", storePath);
 	  perror(" - ");
 	  exit(EXIT_FAILURE);
 	  /* NOT REACHED */
         }
       fclose(f); // N.B. STORE_FILE gets re-opening for writing at end of execution
       if   ( verbose & 1 )
-	fprintf(diag, "%d words read in from %s\n", i, STORE_FILE);
+	fprintf(diag, "%d words read in from %s\n", i, storePath);
     }
   else if  ( verbose & 1 ) 
-    fprintf (diag, "No %s file found, store left empty\n", STORE_FILE);
+    fprintf (diag, "No %s file found, store left empty\n", storePath);
 
   storeValid = TRUE;
 }
 
 void writeStore () {
-   FILE *f = fopen(STORE_FILE, "w");
+   FILE *f = fopen(storePath, "w");
    int i;
    if  ( f == NULL ) {
      fprintf(stderr, ERR_FOPEN_STORE_FILE);
-     perror(STORE_FILE);
+     perror(storePath);
       exit(EXIT_FAILURE);
       /* NOT REACHED */ }
    for ( i = 0 ; i < STORE_SIZE ; ++i )
@@ -780,7 +876,7 @@ void writeStore () {
        if  ( ((i%10) == 0) && (i!=0) ) fputc('\n', f);
      }
    if  ( verbose & 1 )
-	 fprintf(diag, "%d words written out to %s\n", STORE_SIZE, STORE_FILE);
+	 fprintf(diag, "%d words written out to %s\n", STORE_SIZE, storePath);
    fclose(f);
 }
 
@@ -790,7 +886,6 @@ void writeStore () {
 /**********************************************************/
 
 
- 
  void printDiagnostics(int instruction, int f, int a) {
    // extend sign bit for A, Q and B register values
    int an = ( aReg >= BIT18 ? aReg - BIT19 : aReg); 
@@ -836,28 +931,30 @@ void tidyExit (int reason) {
       writeStore(); // save store for next run
       if   ( verbose & 1 )
 	fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
-      if  ( ptr  != NULL )
+      if  ( ptrFile  != NULL )
 	{
 	  int ch;
-	  FILE *ptr2 = fopen(RDR_FILE, "wb");
-	  if  ( ptr2 == NULL )
+	  FILE *ptrFile2 = fopen(RDR_FILE, "wb");
+	  if  ( ptrFile2 == NULL )
 	    {
 	      printf("*** Unable to save paper tape to %s", RDR_FILE);
 	      perror("");
 	      putchar('\n');
-	      fclose(ptr);
 	      exit(EXIT_FAILURE);
 	      /* NOT REACHED */
 	    }
-	  while ( (ch = fgetc(ptr)) != EOF ) fputc(ch, ptr2);
-	  fclose(ptr);
-	  fclose(ptr2);
+	  while ( (ch = fgetc(ptrFile)) != EOF ) fputc(ch, ptrFile2);
+	  fclose(ptrFile);
+	  fclose(ptrFile2);
 	}
-      if  ( pun  != NULL ) fclose(pun);
-      if  ( ttyi != NULL ) fclose(ttyi);
     }
-
+  fclose(ptrFile);
+  fclose(ttyiFile);
+  fclose(punFile);
+  fclose(ttyiFile);
   if  ( plotterPaper != NULL ) savePlotterPaper();
+  if ( diag != stderr ) fclose(diag);
+
   if ( verbose & 1 ) printf("Exiting %d\n", reason);
   exit(reason);
 }
@@ -869,32 +966,30 @@ void tidyExit (int reason) {
 /**********************************************************/
 
 
-void setupPlotter (void) {
-
+void setupPlotter (void)
+{
+    int paperSize = 3*plotterPaperWidth*plotterPaperHeight; 
     // Using 24bit R,G,B so 3 bytes per pixel.
-    plotterPaper = calloc(3,plotterPaperWidth * plotterPaperHeight);
+    plotterPaper = malloc(paperSize);
 
     if  ( plotterPaper != NULL )
     {
 	// Set to all 0xFF for white paper.
-	memset(plotterPaper,0xFF,3 * sizeof(char) * 3500 * 3500);
+        memset(plotterPaper,0xFF,paperSize);
     }
     plotterPenX = 1500;
-    plotterPenY = 3300;
+    plotterPenY = plotterPaperHeight-200;
     plotterPenDown = FALSE;
     if  ( verbose & 1 ) fprintf(diag, "Starting plotting\n");
 }
 
 void savePlotterPaper (void)
 {
-    int width = 3500;
-    int height = 3500;
     char *title = "Elliott 903 Plotter Output";
     int y;
     FILE *fp;
     png_structp png_ptr;
     png_infop info_ptr;
-    png_bytep row;
 
     if  ( plotterPaper == NULL ) return;
     
@@ -929,7 +1024,7 @@ void savePlotterPaper (void)
 	png_init_io(png_ptr, fp);
 
 	// Write header (8 bit colour depth)
-	png_set_IHDR(png_ptr, info_ptr, width, height,
+	png_set_IHDR(png_ptr, info_ptr, plotterPaperWidth, plotterPaperHeight,
 			8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
 			PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
@@ -944,13 +1039,10 @@ void savePlotterPaper (void)
 
 	png_write_info(png_ptr, info_ptr);
 
-	// Allocate memory for one row (3 bytes per pixel - RGB)
-	row = (png_bytep) malloc(3 * width * sizeof(png_byte));
-
 	// Write image data
 
-	for ( y=0 ; y<height ; y++ ) {
-		png_write_row(png_ptr, &plotterPaper[y * 3500 * 3]);
+	for ( y=0 ; y<plotterPaperHeight ; y++ ) {
+		png_write_row(png_ptr, &plotterPaper[y * plotterPaperWidth * 3]);
 	}
 
 	// End write
@@ -960,62 +1052,54 @@ void savePlotterPaper (void)
 	if  ( fp != NULL ) fclose(fp);
 	if  ( info_ptr != NULL ) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
 	if  ( png_ptr != NULL ) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
-	if  ( row != NULL ) free(row);
-
 
 }
 
-void movePlotter(int bits) {
-static int firstCall = TRUE;
-int address;
+void movePlotter(int bits)
+{
+  static int firstCall = TRUE;
+  int address;
 
-if  ( firstCall )  // Only try once !
-   {
+  if  ( firstCall )  // Only try once !
+    {
        setupPlotter();
        firstCall = FALSE;
-   }
+    }
 
-if  ( plotterPaper == NULL ) return;   // Paper allocation failed.
+  if  ( plotterPaper == NULL ) return;   // Paper allocation failed.
 
- if  ( verbose & 8 ) fprintf(diag, "Plotter code %1o output\n", bits & 63);
+  if  ( verbose & 8 ) fprintf(diag, "Plotter code %1o output\n", bits & 63);
 
-if  ( bits & 1 )
-  {
-    if( plotterPenX <  3500 ) plotterPenX+=1;
-  }
-if  ( bits & 2 )
-  {
-
-    if( plotterPenX > 0 ) plotterPenX-=1;
-  }
-if  ( bits & 8 )
-  {
-    plotterPenY+=1;
-  }
-if  ( bits & 4 )
-  {
-    plotterPenY-=1;
-  }
-
-if  ( bits & 16 ) plotterPenDown = FALSE;
-if  ( bits & 32 ) plotterPenDown = TRUE;
-
-if ( plotterPenDown )
-  {
-    // Check if pen is over the paper.
-    if  ( (plotterPenY >= 0) && (plotterPenY < 3500) )
-      {
-	address = (plotterPenY*3500*3)+(plotterPenX*3);
-	// Three bytes are for R,G,B.  Set all to zero for black pen.
-	plotterPaper[address++] = 0x0;
-	plotterPaper[address++] = 0x0;
-	plotterPaper[address  ] = 0x0;
-      }
-  }
-
+  // hard stop at E and W margins
+  if  ( (bits & 1 ) && (plotterPenX < plotterPaperWidth ) ) 
+		     plotterPenX+=1; // East
+  if  ( (bits & 2 ) && (plotterPenX > 0 ) ) 
+		     plotterPenX-=1; // West
+  if  ( bits &  4 )  plotterPenY-=1; // North
+  if  ( bits &  8 )  plotterPenY+=1; // South
+  if  ( bits & 16 )  plotterPenDown = FALSE;
+  if  ( bits & 32 )  plotterPenDown = TRUE;
+ 
+  if ( plotterPenDown )
+    {
+      int x, y;
+      for ( x = plotterPenX-2; x <= plotterPenX+2; x++ )
+	  for ( y = plotterPenY-2; y <= plotterPenY+2; y++ )
+	    if  ( (y >= 0) && ( y < plotterPaperHeight) ) // trim if outside N and S margins
+	      {
+		address = (y*plotterPaperWidth*3)+(x*3);
+		if ( address > 3*plotterPaperWidth*plotterPaperHeight )
+		  {
+		    printf("Paper bounds %d %d %d %d\n", x, y, address, 3*plotterPaperWidth*plotterPaperHeight);
+		    exit(EXIT_FAILURE);
+		  }
+		// Three bytes are for R,G,B.  Set all to zero for black pen.
+		plotterPaper[address++] = 0x0;
+		plotterPaper[address++] = 0x0;
+		plotterPaper[address  ] = 0x0;
+	      }
+    }
 }
-
-
 
 
 /**********************************************************/
@@ -1026,9 +1110,9 @@ if ( plotterPenDown )
 /* Paper tape reader */
 int readTape() {
   int ch;
-  if   ( ptr == NULL )
+  if   ( ptrFile == NULL )
     {
-      if  ( (ptr = fopen(ptrPath, "rb")) == NULL )
+      if  ( (ptrFile = fopen(ptrPath, "rb")) == NULL )
 	{
           printf("*** %s ", ERR_FOPEN_RDR_FILE);
           perror(ptrPath);
@@ -1042,9 +1126,9 @@ int readTape() {
 	fprintf(diag, "Paper tape reader file %s opened\n", ptrPath);
 	}
     }
-  if  ( (ch = fgetc(ptr)) != EOF )
+  if  ( (ch = fgetc(ptrFile)) != EOF )
       {
-	if  (( verbose & 8 ) > 0 )
+	if  ( verbose & 8 )
 	  {
 	    flushTTY();
 	    traceOne = TRUE;
@@ -1071,13 +1155,13 @@ void punchTape(int ch) {
       exit(EXIT_PUNSTOP);
       /* NOT REACHED */
     }
-  if  ( pun == NULL )
+  if  ( punFile == NULL )
     {
-      if  ( (pun = fopen(ptpPath, "wb")) == NULL )
+      if  ( (punFile = fopen(punPath, "wb")) == NULL )
 	{
 	  flushTTY();
 	  printf("*** %s ", ERR_FOPEN_PUN_FILE);
-	  perror("ptpPath");
+	  perror("punPath");
 	  putchar('\n');
 	  tidyExit(EXIT_FAILURE);
 	  /* NOT REACHED */
@@ -1085,14 +1169,14 @@ void punchTape(int ch) {
       else if  ( verbose & 1 )
 	{
 	  flushTTY();
-	 fprintf(diag, "Paper tape punch file %s opened\n", ptpPath);
+	 fprintf(diag, "Paper tape punch file %s opened\n", punPath);
 	}
     }
-  if  ( fputc(ch, pun) != ch )
+  if  ( fputc(ch, punFile) != ch )
     {
       flushTTY();
       printf("*** Problem writing to ");
-      perror(ptpPath);
+      perror(punPath);
       putchar('\n');
       tidyExit(EXIT_FAILURE);
       /* NOT REACHED */
@@ -1114,9 +1198,9 @@ int readTTY() {
       exit(EXIT_PUNSTOP);
       /* NOT REACHED */
     }
-  if   ( ttyi == NULL )
+  if   ( ttyiFile == NULL )
     {
-      if  ( (ttyi = fopen(ttyInPath, "rb")) == NULL )
+      if  ( (ttyiFile = fopen(ttyInPath, "rb")) == NULL )
 	{
 	  flushTTY();
           printf("*** %s ", ERR_FOPEN_TTYIN_FILE);
@@ -1131,7 +1215,7 @@ int readTTY() {
 	  fprintf(diag,"Teletype input file %s opened\n", TTYIN_FILE);
 	}
     }
-    if  ( (ch = fgetc(ttyi)) != EOF )
+    if  ( (ch = fgetc(ttyiFile)) != EOF )
       {
 	if ( verbose & 8 )
 	  {
