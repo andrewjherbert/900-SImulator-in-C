@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 19/03/2021
+// Elliott 903 emulator - Andrew Herbert - 20/03/2021
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -106,6 +106,7 @@
 #include <signal.h>
 #include <png.h>
 #include <popt.h>
+
 
 /**********************************************************/
 /*                         DEFINES                        */
@@ -269,9 +270,12 @@ int makeIns(int m, int f, int a); // help for loadII
 
 
 int main (int argc, const char **argv) {
+  printf("main\n");
    signal(SIGINT, catchInt); // allow control-C to end cleanly
    diag = stderr;            // set up diagnostic output for reports
+   printf("decodeArgs\n");
    decodeArgs(argc, argv);   // decode command line and set options etc
+   printf("emulate\n");
    emulate();                // run emulation
 }
 
@@ -852,7 +856,7 @@ void readStore () {
 	  exit(EXIT_FAILURE);
 	  /* NOT REACHED */
         }
-      fclose(f); // N.B. STORE_FILE gets re-opening for writing at end of execution
+      fclose(f); // N.B. store file gets re-opened for writing at end of execution
       if   ( verbose & 1 )
 	fprintf(diag, "%d words read in from %s\n", i, storePath);
     }
@@ -944,16 +948,14 @@ void tidyExit (int reason) {
 	      /* NOT REACHED */
 	    }
 	  while ( (ch = fgetc(ptrFile)) != EOF ) fputc(ch, ptrFile2);
-	  fclose(ptrFile);
 	  fclose(ptrFile2);
 	}
     }
-  fclose(ptrFile);
-  fclose(ttyiFile);
-  fclose(punFile);
-  fclose(ttyiFile);
-  if  ( plotterPaper != NULL ) savePlotterPaper();
-  if ( diag != stderr ) fclose(diag);
+  if ( ptrFile      != NULL ) fclose(ptrFile);
+  if ( ttyiFile     != NULL ) fclose(ttyiFile);
+  if ( punFile      != NULL ) fclose(punFile);
+  if ( plotterPaper != NULL ) savePlotterPaper();
+  if ( diag         != stderr ) fclose(diag);
 
   if ( verbose & 1 ) printf("Exiting %d\n", reason);
   exit(reason);
