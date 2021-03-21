@@ -6,7 +6,7 @@
 // No support (as yet) for: interactive use of teletype, line printer, 
 // card reader or magnetic tape.
 
-// Plotter support added by Peter Onion 02/03/2021
+// Plotter support added by Peter Onion 21/03/2021
 
 // Code assumes int is >= 19 bits and long int >= 38 bits.
 
@@ -15,10 +15,10 @@
 //    LIBPNG for plotter output
 
 // Usage: emu900 [-d?] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
-//      [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
-//      [-j|-jump=integer] [-m|-monitor=address] [-r|-rstart=integer]
-//      [-s|-start=address] [-t|-trace=integer] [-w|-width=integer]
-//      [-v|-verbose=integer] [-?|--help] [--usage]
+//        [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
+//        [-j|-jump=integer] [-m|-monitor=address] [-p|-Pen=integer]
+//        [-r|-rtrace=integer] [-s|-start=address] [-t|-trace=integer]
+//        [-w|-width=integer] [-v|-verbose=integer] [-?|--help] [--usage]
 
 // Verbosity is controlled by the -v argument.  The level of reporting can be selected
 // by ORing the following values:
@@ -62,7 +62,8 @@
 // The output is in a PHG format.
 
 // The size of the plotting area can be set using the -width and -height command line
-// arguments.  These set the size in plotter steps.
+// arguments.  These set the size in plotter steps.  The size of the pen nib can be
+// set using the -pen command line argument.  The default is 3 steps (0.3mm).
 
 // By default the simulator jumps to 8181 to start execution, unless overriden by
 // -jump argument on the command line.  The jump address can be in the range 0-8191.
@@ -165,8 +166,9 @@
 
 #define REEL 10*12*1000  // reel of paper tape in characters (1,000 feet, 10 ch/in)
 
-#define PAPER_WIDTH  3600
-#define PAPER_HEIGHT 3600
+#define PAPER_WIDTH  3600  // 0.1 mm steps - 34cm max on B-L plotter
+#define PAPER_HEIGHT 3600  // 0.1 mm stemps
+#define PEN_SIZE        4  // pen nib size in steps
 
 
 /**********************************************************/
@@ -231,6 +233,7 @@ unsigned char *plotterPaper = NULL;    // != NULL => plotter has been used.
 int plotterPenX, plotterPenY, plotterPenDown, plotterUsed;
 int plotterPaperWidth  = PAPER_WIDTH;
 int plotterPaperHeight = PAPER_HEIGHT;
+int plotterPenSize     = PEN_SIZE;    
 
 
 /**********************************************************/
@@ -314,11 +317,13 @@ void decodeArgs (int argc, const char *argv[])
        &opKeys, 2, "jump to address", "integer"},
       {"monitor", 'm',  POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
        &buffer, 3, "monitor location", "address"},
+      {"Pen", 'p',      POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
+       &plotterPenSize, 4, "plotter pen size in steps", "integer"},
       {"rtrace",  'r',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
        &diagLimit, 0, "trace 1000 instructions after "
-          "first n", "integer"},
+        "first n", "integer"},
       {"start",   's',  POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
-       &buffer, 4, "start tracing at location n", "address"},
+       &buffer, 5, "start tracing at location n", "address"},
       {"trace",   't',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
        &diagCount, 0, "turn on tracing after n instructions", "integer"},
       {"width",   'w',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
@@ -354,14 +359,18 @@ void decodeArgs (int argc, const char *argv[])
 
     case 3: // m address (monitor address)
       monLoc = addtoi(buffer);
-      fprintf(stderr, "%s %d\n", buffer, monLoc);
       if ( monLoc == -1 )
 	usage(optCon, EXIT_FAILURE, "malformed address", buffer);
       if ( monLoc >= STORE_SIZE )
 	usage(optCon, EXIT_FAILURE, "monitor address outside store bounds", buffer);
       break;
 
-    case 4: // s address (trace from location)
+    case 4: // p plotter pen size
+      if ( plotterPenSize > 12 )
+	usage(optCon, EXIT_FAILURE, "maximum pen size is 12", NULL);
+      break;
+
+    case 5: // s address (trace from location)
       diagFrom = addtoi(buffer);
       if ( diagFrom == -1 )
 	usage(optCon, EXIT_FAILURE, "malformed address", buffer);
@@ -407,6 +416,7 @@ void decodeArgs (int argc, const char *argv[])
         fprintf(diag, "Teletype input will be read from %s\n", ttyInPath);
         fprintf(diag, "Plotter output will go to %s\n", plotPath);
 	fprintf(diag, "Plotter paper width %d, height %d\n", plotterPaperWidth, plotterPaperHeight);
+	fprintf(diag, "Plotter pen size %d steps\n", plotterPenSize);
         fprintf(diag, "Store image will be read from %s\n", storePath);
 	fprintf(diag, "Execution will commence at address ");
 	printAddr(diag, opKeys);
@@ -690,13 +700,13 @@ void emulate () {
 		  case 4864: // send to plotter
 		    
 		      movePlotter(aReg);
-		      if   (aReg & 0x30)
+		      if   (aReg >= 16 )
 		      {
-			  emTime += 100000;  // assume 10 pen up or down / second
+			  emTime += 20000;  // 20ms per step
 		      }
 		      else
 		      {
-			  emTime += 3333;   // assume 300 steps/second
+			  emTime += 3300;   // 3.3ms
 		      }		  
 		      break;
 
@@ -978,6 +988,7 @@ void setupPlotter (void)
     plotterPenX = 1500;
     plotterPenY = plotterPaperHeight-200;
     plotterPenDown = FALSE;
+    if ( (plotterPenSize /= 3) == 0 ) plotterPenSize = 1;
     if  ( verbose & 1 ) fprintf(diag, "Starting plotting\n");
 }
 
@@ -1081,8 +1092,8 @@ void movePlotter(int bits)
   if ( plotterPenDown )
     {
       int x, y;
-      for ( x = plotterPenX-2; x <= plotterPenX+2; x++ )
-	  for ( y = plotterPenY-2; y <= plotterPenY+2; y++ )
+      for ( x = plotterPenX-plotterPenSize; x <= plotterPenX+plotterPenSize; x++ )
+	  for ( y = plotterPenY-plotterPenSize; y <= plotterPenY+plotterPenSize; y++ )
 	    if  ( (y >= 0) && ( y < plotterPaperHeight) ) // trim if outside N and S margins
 	      {
 		address = (y*plotterPaperWidth*3)+(x*3);
