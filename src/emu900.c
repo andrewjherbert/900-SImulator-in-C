@@ -15,10 +15,10 @@
 //    LIBPNG for plotter output
 
 // Usage: emu900 [-d?] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
-//      [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
-//      [-j|-jump=integer] [-m|-monitor=address] [-r|-rstart=integer]
-//      [-s|-start=address] [-t|-trace=integer] [-w|-width=integer]
-//      [-v|-verbose=integer] [-?|--help] [--usage]
+//        [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
+//        [-j|-jump=integer] [-m|-monitor=address] [-p|-Pen=integer]
+//        [-r|-rtrace=integer] [-s|-start=address] [-t|-trace=integer]
+//        [-w|-width=integer] [-v|-verbose=integer] [-?|--help] [--usage]
 
 // Verbosity is controlled by the -v argument.  The level of reporting can be selected
 // by ORing the following values:
@@ -62,7 +62,8 @@
 // The output is in a PHG format.
 
 // The size of the plotting area can be set using the -width and -height command line
-// arguments.  These set the size in plotter steps.
+// arguments.  These set the size in plotter steps.  The size of the pen nib can be
+// set using the -pen command line argument.  The default is 3 steps (0.3mm).
 
 // By default the simulator jumps to 8181 to start execution, unless overriden by
 // -jump argument on the command line.  The jump address can be in the range 0-8191.
