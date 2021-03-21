@@ -6,16 +6,16 @@ then
     exit
 elif [ ! -e "demos/903algol/$1.txt" ]
 then
-    echo  $1 not found in demos/903algol
+    echo $1 not found in demos/903algol
     exit
 fi
-rm -f .reader .punch .ascii .save .plot .translate
+rm -f .reader .punch .ascii .save .plot.png .translate
 #echo loading Algol
 cp bin/903algol/alg16klg_masd_store .store
 #echo convert input tape
 ./to900text demos/903algol/$1.txt
 #echo run translator in library mode
-./emu900 -j=12 $2  >.translate
+./emu900 -j=12 $2 >.translate
 cp .reader .save
 if [ $? != 0 ]
 then exit $?
@@ -26,7 +26,7 @@ if [ $? != 0 ]
 then
     echo
     #echo scan library
-    ./emu900 -j=9 -reader=bin/903algol/algol_tape3_iss5_plotting $2
+    ./emu900 -j=9 $2 -reader=bin/903algol/algol_tape3_iss5_plotting
     echo 
     echo
     if [ $? != 0 ]
@@ -47,7 +47,7 @@ then
     fi
     if [ -e .plot.png ]
     then
-    	OS=`uname`
+        OS=`uname`
         if   [ "$OS" = "Linux" ]
 	then gpicview .plot.png &
 	elif [ "$OS" = "Darwin" ]

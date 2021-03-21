@@ -9,7 +9,7 @@ then
     echo $1 not found in demos/903algol
     exit
 fi
-rm -f .reader .punch .ascii .save .plot .translate
+rm -f .reader .punch .ascii .save .plot.png .translate
 #echo loading Algol
 cp bin/903algol/alg16klg_ajh_store .store
 #echo convert input tape
@@ -27,7 +27,7 @@ then
     echo
     #echo scan library
     ./emu900 -j=9 $2 -reader=bin/903algol/algol_tape3_iss7_plotting
-    echo 
+    echo
     echo
     if [ $? != 0 ]
     then exit $?
@@ -47,7 +47,7 @@ then
     fi
     if [ -e .plot.png ]
     then
-	OS=`uname`
+        OS=`uname`
         if   [ "$OS" = "Linux" ]
 	then gpicview .plot.png &
 	elif [ "$OS" = "Darwin" ]
