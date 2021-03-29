@@ -280,6 +280,7 @@ int main (int argc, const char **argv) {
 }
 
 void catchInt(int sig, void (*handler)(int)) {
+  flushTTY();
   fprintf(stderr, "*** Execution terminated by interrupt\n");
   tidyExit(EXIT_FAILURE);
 }
@@ -504,8 +505,8 @@ void emulate () {
       lastSCR = store[scReg];         // remember SCR
       if   ( lastSCR >= STORE_SIZE )
         {
-          fprintf(diag, "*** SCR has overflowed the store (SCR = %d)\n", lastSCR);
 	  flushTTY();
+          fprintf(diag, "*** SCR has overflowed the store (SCR = %d)\n", lastSCR);
   	  tidyExit(EXIT_FAILURE);
         }
       s = ++store[scReg];                 // increment SCR
@@ -664,6 +665,7 @@ void emulate () {
 	        }  
 	      else
 	        {
+		  flushTTY();
 	          fprintf(stderr, "*** Unsupported i/o 14 i/o instruction\n");
 	          printDiagnostics(instruction, f, a);
 	          tidyExit(EXIT_FAILURE);
@@ -939,6 +941,7 @@ void printTime (long long us) { // print out time in us
 void tidyExit (int reason) {
   if ( storeValid )
     {
+      flushTTY();
       writeStore(); // save store for next run
       if   ( verbose & 1 )
 	fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
@@ -1123,7 +1126,8 @@ int readTape() {
     {
       if  ( (ptrFile = fopen(ptrPath, "rb")) == NULL )
 	{
-          printf("*** %s ", ERR_FOPEN_RDR_FILE);
+	  flushTTY();
+          fprintf(stderr,"*** %s ", ERR_FOPEN_RDR_FILE);
           perror(ptrPath);
           putchar('\n');
           tidyExit(EXIT_FAILURE);
@@ -1132,7 +1136,7 @@ int readTape() {
       else if  ( verbose & 1 )
 	{
 	  flushTTY();
-	fprintf(diag, "Paper tape reader file %s opened\n", ptrPath);
+	  fprintf(diag, "Paper tape reader file %s opened\n", ptrPath);
 	}
     }
   if  ( (ch = fgetc(ptrFile)) != EOF )
@@ -1148,8 +1152,7 @@ int readTape() {
     else
       {
 	flushTTY();
-        if  ( verbose & 1 )
-	  fprintf(diag, "Run off end of input tape\n");
+        if  ( verbose & 1 ) fprintf(diag, "Run off end of input tape\n");
         tidyExit(EXIT_RDRSTOP);
 	/* NOT REACHED */
       }
@@ -1160,6 +1163,7 @@ int readTape() {
 void punchTape(int ch) {
   if ( punchCount++ >= REEL )
     {
+      flushTTY();
       fprintf(stderr,"Paper tape reel empty on punch\n");
       exit(EXIT_PUNSTOP);
       /* NOT REACHED */
@@ -1203,6 +1207,7 @@ int readTTY() {
   int ch;
   if   ( ttyCount++ >= REEL )
     {
+      flushTTY();
       fprintf(stderr,"Excessive output to teletype\n");
       exit(EXIT_PUNSTOP);
       /* NOT REACHED */
