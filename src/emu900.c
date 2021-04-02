@@ -342,7 +342,6 @@ void decodeArgs (int argc, const char *argv[])
     switch (c) {
 
     case 1: // -d
-      printf("opening log file\n");
       if ( ! (diag = fopen(LOG_FILE, "w"))  )
 	{
 	  fprintf(stderr, "Cannot open log file %s:", LOG_FILE);
@@ -666,7 +665,7 @@ void emulate () {
 	      else
 	        {
 		  flushTTY();
-	          fprintf(stderr, "*** Unsupported i/o 14 i/o instruction\n");
+	          fprintf(diag, "*** Unsupported i/o 14 i/o instruction\n");
 	          printDiagnostics(instruction, f, a);
 	          tidyExit(EXIT_FAILURE);
 	          /* NOT REACHED */
@@ -731,7 +730,7 @@ void emulate () {
 
 	            default:
 		      flushTTY();
-	              fprintf(stderr, "*** Unsupported 15 i/o instruction\n");
+	              fprintf(diag, "*** Unsupported 15 i/o instruction\n");
 	              printDiagnostics(instruction, f, a);
 	              tidyExit(EXIT_FAILURE);
 	              /* NOT REACHED */
@@ -951,7 +950,7 @@ void tidyExit (int reason) {
 	  FILE *ptrFile2 = fopen(RDR_FILE, "wb");
 	  if  ( ptrFile2 == NULL )
 	    {
-	      printf("*** Unable to save paper tape to %s", RDR_FILE);
+	      fprintf(stderr, "*** Unable to save paper tape to %s", RDR_FILE);
 	      perror("");
 	      putchar('\n');
 	      exit(EXIT_FAILURE);
@@ -967,7 +966,7 @@ void tidyExit (int reason) {
   if ( plotterPaper != NULL ) savePlotterPaper();
   if ( diag         != stderr ) fclose(diag);
 
-  if ( verbose & 1 ) printf("Exiting %d\n", reason);
+  if ( verbose & 1 ) fprintf(diag, "Exiting %d\n", reason);
   exit(reason);
 }
 
@@ -1016,14 +1015,14 @@ void savePlotterPaper (void)
 	// Initialize write structure
 	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if  (png_ptr == NULL ) {
-		fprintf(stderr, "Could not allocate write struct\n");
+		fprintf(stderr, "Could not allocate PNG write struct\n");
 		goto finalise;
 	}
 
 	// Initialize info structure
 	info_ptr = png_create_info_struct(png_ptr);
 	if ( info_ptr == NULL ) {
-		fprintf(stderr, "Could not allocate info struct\n");
+		fprintf(stderr, "Could not allocate PNG info struct\n");
 		goto finalise;
 	}
 
@@ -1100,11 +1099,6 @@ void movePlotter(int bits)
 	    if  ( (y >= 0) && ( y < plotterPaperHeight) ) // trim if outside N and S margins
 	      {
 		address = (y*plotterPaperWidth*3)+(x*3);
-		if ( address > 3*plotterPaperWidth*plotterPaperHeight )
-		  {
-		    printf("Paper bounds %d %d %d %d\n", x, y, address, 3*plotterPaperWidth*plotterPaperHeight);
-		    exit(EXIT_FAILURE);
-		  }
 		// Three bytes are for R,G,B.  Set all to zero for black pen.
 		plotterPaper[address++] = 0x0;
 		plotterPaper[address++] = 0x0;
@@ -1164,7 +1158,7 @@ void punchTape(int ch) {
   if ( punchCount++ >= REEL )
     {
       flushTTY();
-      fprintf(stderr,"Paper tape reel empty on punch\n");
+      fprintf(diag,"Excessive output to punch\n");
       exit(EXIT_PUNSTOP);
       /* NOT REACHED */
     }
