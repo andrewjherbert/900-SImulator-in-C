@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 20/03/2021
+// Elliott 903 emulator - Andrew Herbert - 05/04/2021
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -8,9 +8,7 @@
 
 // Plotter support added by Peter Onion 21/03/2021
 
-// Code assumes int is >= 19 bits and long int >= 38 bits.
-
-// Pre-requistes:
+// Pre-requisites:
 //    LIBOPT for command line decoding
 //    LIBPNG for plotter output
 
@@ -147,7 +145,6 @@
 /* Useful constants */
 #define BIT19       01000000
 #define MASK18       0777777
-#define MASK18L      0777777L
 #define BIT18       00400000
 #define MASK16      00177777
 #define ADDR_MASK       8191
@@ -175,10 +172,9 @@
 /*                         GLOBALS                        */
 /**********************************************************/
 
+typedef int_fast32_t INT32;
+typedef int_fast64_t INT64;
 
-/* these next two declarations will blow up if int < 19 bits */
-int           bits18 =      262144;  // modulus for 18 bit operations
-long long int bits36 = 68719476736L; // modulus for 64 bit operations
 
 /* Diagnostics related variables */
 FILE *diag      = NULL;      // diagnostics output - set to either  stderr or .log
@@ -189,13 +185,13 @@ FILE *punFile   = NULL;       // paper tape punch
 FILE *ttyiFile  = NULL;       // teleprinter input
 FILE *ttyoFile  = NULL;       // teleprinter output
 
-int verbose   = 0;       // no diagnostics by default
-int diagCount = -1;      // turn diagnostics on at this instruction count
-int abandon   = -1;      // abandon on this instruction count 
-int diagFrom  = -1;      // turn on diagnostics when first reach this address
-int diagLimit = -1;      // stop after this number of instructions executed
-int monLoc    = -1;      // report if this location changes
-int monLast   = -1;
+INT32 verbose   = 0;       // no diagnostics by default
+INT32 diagCount = -1;      // turn diagnostics on at this instruction count
+INT32 abandon   = -1;      // abandon on this instruction count 
+INT32 diagFrom  = -1;      // turn on diagnostics when first reach this address
+INT32 diagLimit = -1;      // stop after this number of instructions executed
+INT32 monLoc    = -1;      // report if this location changes
+INT32 monLast   = -1;
 
 /* Input output streams */
 char *ptrPath   = RDR_FILE;    // path for reader input file
@@ -204,36 +200,37 @@ char *ttyInPath = TTYIN_FILE;  // path for teletype input file
 char *plotPath  = PLOT_FILE;   // path for plotter output
 char *storePath = STORE_FILE;  // path for store image
 
-int lastttych   = -1; // last tty character punched
-int punchCount  = -1; // count of paper tape characters punched
-int ttyCount    = -1; // count of teletype character typed
+INT32 lastttych   = -1; // last tty character punched
+INT32 punchCount  = -1; // count of paper tape characters punched
+INT32 ttyCount    = -1; // count of teletype character typed
 
 /* Emulated store */
-int store [STORE_SIZE];
-int storeValid = FALSE; // set TRUE when a store image loaded
+INT32 store [STORE_SIZE];
+INT32 storeValid = FALSE; // set TRUE when a store image loaded
 
 /* Machine state */
-int opKeys = 8181; // setting of keys on operator's control panel, overidden by
-                   // -j option
-int aReg  = 0, qReg  = 0;
-int bReg  = BREGLEVEL1, scReg = SCRLEVEL1; // address in store of B register and SCR
-int lastSCR; // used to detect dynamic loops
-int level = 1; // priority level
-long long iCount = 0L; // count of instructions executed
-int instruction, f, a, m;
-long long int fCount[] =  // function code counts
+INT32 opKeys = 8181; // setting of keys on operator's control panel, overidden by
+                     // -j option
+INT32 aReg  = 0, qReg  = 0; // a and q registers
+INT32 bReg  = BREGLEVEL1; // address in store of B register 
+INT32 scReg = SCRLEVEL1;  // address in store of B register
+INT32 lastSCR;       // used to detect dynamic loops
+INT32 level = 1;     // priority level
+INT64 iCount = 0L;   // count of instructions executed
+INT32 instruction, f, a, m;
+INT64 fCount[] =     // function code counts
                           {0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L,0L};
 
 /* Tracing */
-int traceOne      = FALSE; // TRUE => trace current instruction only
+INT32 traceOne      = FALSE; // TRUE => trace current instruction only
 
 /* Plotter */
 unsigned char *plotterPaper = NULL;    // != NULL => plotter has been used.
   
-int plotterPenX, plotterPenY, plotterPenDown, plotterUsed;
-int plotterPaperWidth  = PAPER_WIDTH;
-int plotterPaperHeight = PAPER_HEIGHT;
-int plotterPenSize     = PEN_SIZE;    
+INT32 plotterPenX, plotterPenY, plotterPenDown, plotterUsed;
+INT32 plotterPaperWidth  = PAPER_WIDTH;
+INT32 plotterPaperHeight = PAPER_HEIGHT;
+INT32 plotterPenSize     = PEN_SIZE;    
 
 
 /**********************************************************/
@@ -241,30 +238,29 @@ int plotterPenSize     = PEN_SIZE;
 /**********************************************************/
 
 
-void decodeArgs(int argc, const char **argv); // decode command line
-void usage(poptContext optCon, int exitcode, char *error, char *addl);
-void catchInt();        // interrupt handler
-int  addtoi(char* arg); // read numeric part of argument
-void emulate();         // run emulation
-void clearStore();      // clear main store
-void readStore();       // read in a store image
-void tidyExit();        // tidy up and exit
-void writeStore();      // dump out store image
+void  decodeArgs(INT32 argc, const char **argv); // decode command line
+void  usage(poptContext optCon, INT32 exitcode, char *error, char *addl);
+void  catchInt();              // interrupt handler
+INT32 addtoi(char* arg);       // read numeric part of argument
+void  emulate();               // run emulation
+void  clearStore();            // clear main store
+void  readStore();             // read in a store image
+void  tidyExit();              // tidy up and exit
+void  writeStore();            // dump out store image
+void  printDiagnostics(INT32 i, INT32 f, INT32 a); // print diagnostic information for current instruction
+void  printTime(INT64 us);     // print out time counted in microseconds
+void  printAddr(FILE *f, INT32 addr); // print address in m^nnn format
 
-void printDiagnostics(int i, int f, int a); // print diagnostic information for current instruction
-void printTime(long long us);  // print out time counted in microseconds
-void printAddr(FILE *f, int addr); // print address in m^nnn format
-
-void movePlotter(int bits);  // Move the plotter pen
-void setupPlotter(void);     // Clear paper to white pixels
-void savePlotterPaper(void); // Write paper image to PLOT_FILE
-int readTape();         // read from paper tape
-void punchTape(int ch); // punch to paper tape
-int readTTY();          // read from teletype
-void writeTTY(int ch);  // write to teletype
-void flushTTY();        // force output of last tty output line
-void loadII();          // load initial orders
-int makeIns(int m, int f, int a); // help for loadII
+void  movePlotter(INT32 bits); // Move the plotter pen
+void  setupPlotter(void);      // Clear paper to white pixels
+void  savePlotterPaper(void);  // Write paper image to PLOT_FILE
+INT32 readTape();              // read from paper tape
+void  punchTape(INT32 ch);     // punch to paper tape
+INT32 readTTY();               // read from teletype
+void  writeTTY(INT32 ch);      // write to teletype
+void  flushTTY();              // force output of last tty output line
+void  loadII();                // load initial orders
+INT32 makeIns(INT32 m, INT32 f, INT32 a); // help for loadII
 
 
 /**********************************************************/
@@ -272,14 +268,14 @@ int makeIns(int m, int f, int a); // help for loadII
 /**********************************************************/
 
 
-int main (int argc, const char **argv) {
+INT32 main (INT32 argc, const char **argv) {
    signal(SIGINT, catchInt); // allow control-C to end cleanly
    diag = stderr;            // set up diagnostic output for reports
    decodeArgs(argc, argv);   // decode command line and set options etc
    emulate();                // run emulation
 }
 
-void catchInt(int sig, void (*handler)(int)) {
+void catchInt(INT32 sig, void (*handler)(int)) {
   flushTTY();
   fprintf(stderr, "*** Execution terminated by interrupt\n");
   tidyExit(EXIT_FAILURE);
@@ -291,9 +287,9 @@ void catchInt(int sig, void (*handler)(int)) {
 /**********************************************************/
 
 
-void decodeArgs (int argc, const char *argv[])
+void decodeArgs (INT32 argc, const char *argv[])
 {
-  int c;
+  INT32 c;
   char *buffer = NULL;
   char number[12];
   poptContext optCon;
@@ -440,19 +436,19 @@ void decodeArgs (int argc, const char *argv[])
        }
 }
 
-void usage (poptContext optCon, int exitcode, char *error, char *addl)
+void usage (poptContext optCon, INT32 exitcode, char *error, char *addl)
 {
   poptPrintUsage(optCon, stderr, 0);
   if (error) fprintf(stderr, "%s: %s\n", error, addl);
   exit(exitcode);
 }
 
-int addtoi (char *s) {
-  int value = 0;
-  int i;
+INT32 addtoi (char *s) {
+  INT32 value = 0;
+  INT32 i;
   while  ( *s != '\0' )
     {
-      int ch = *s++;
+      INT32 ch = *s++;
       if  ( isdigit(ch) )
         value = value * 10 + ch - (int)'0'; 
       else if ( ch == '^' )
@@ -474,10 +470,9 @@ int addtoi (char *s) {
 
 void emulate () {
 
-  int exitCode      = EXIT_SUCCESS; // reason for terminating
-  int tracing       = FALSE; // true if tracing enabled
-  long long emTime  = 0L; // crude estimate of 900 elapsed time
-  int s             = -1; // next SCR
+  INT32 exitCode = EXIT_SUCCESS; // reason for terminating
+  INT32 tracing  = FALSE; // true if tracing enabled
+  INT64 emTime   = 0L; // crude estimate of 900 elapsed time
 
   FILE *stop; // used to open stopFile
 
@@ -501,14 +496,14 @@ void emulate () {
     {
       
       // increment SCR
-      lastSCR = store[scReg];         // remember SCR
+      lastSCR = store[scReg];
+      store[scReg]++;         
       if   ( lastSCR >= STORE_SIZE )
         {
 	  flushTTY();
           fprintf(diag, "*** SCR has overflowed the store (SCR = %d)\n", lastSCR);
   	  tidyExit(EXIT_FAILURE);
         }
-      s = ++store[scReg];                 // increment SCR
 
       // fetch and decode instruction;
       instruction = store[lastSCR];
@@ -575,7 +570,7 @@ void emulate () {
   	    if   ( aReg == 0 )
 	      {
 	        traceOne = tracing && (verbose & 2);
-	        store[scReg] = s = m;
+	        store[scReg] = m;
 		emTime += 28;
 	      }
 	    if  ( aReg > 0 )
@@ -585,7 +580,7 @@ void emulate () {
 	    break;
 
           case 8: // Jump unconditional
-	    store[scReg] = s = m;
+	    store[scReg] = m;
 	    emTime += 23;
 	    break;
 
@@ -593,7 +588,7 @@ void emulate () {
 	    if   ( aReg >= BIT18 )
 	      {
 	        traceOne = tracing && (verbose & 2);
-		store[scReg] = s = m;
+		store[scReg] = m;
 		emTime += 25;
 	      }
 	    emTime += 20;
@@ -606,9 +601,8 @@ void emulate () {
 
           case 11:  // Store S
 	    {
-              int s = store[scReg];
-	      qReg = s & MOD_MASK;
-	      store[m] = s & ADDR_MASK;
+	      qReg = store[scReg] & MOD_MASK;
+	      store[m] = store[scReg] & ADDR_MASK;
 	      emTime += 30;
 	      break;
 	    }
@@ -616,13 +610,13 @@ void emulate () {
           case 12:  // Multiply
 	    {
 	      // extend sign bits for a and store[m]
-	      long long al = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
-	      long long sl = (long long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-	      long long  prod = al * sl;
-	      qReg = (int) ((prod << 1) & MASK18L );
+	      const INT64 al = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
+	      const INT64 sl = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+	      INT64  prod = al * sl;
+	      qReg = (INT32) ((prod << 1) & MASK18 );
 	      if   ( al < 0 ) qReg |= 1;
 	      prod = prod >> 17; // arithmetic shift
- 	      aReg = (int) (prod & MASK18L);
+ 	      aReg = (int) (prod & MASK18);
 	      emTime += 79;
 	      break;
 	    }
@@ -630,12 +624,12 @@ void emulate () {
           case 13:  // Divide
 	    {
 	      // extend sign bit for aq
-	      long long al   = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
-	      long long ql   = (long long) qReg;
-	      long long aql  = (al << 18) | ql;
-	      long long ml   = (long long) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-              long long quot = (( aql / ml) >> 1) & MASK18L;
-	      int q     = (int) quot;
+	      const INT64 al   = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	      const INT64 ql   = (INT64) qReg;
+	      const INT64 aql  = (al << 18) | ql;
+	      const INT64 ml   = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+              const INT64 quot = (( aql / ml) >> 1) & MASK18;
+	      const INT32 q     = (INT32) quot;
   	      aReg = q | 1;
 	      qReg = q & 0777776;
 	      emTime += 79;
@@ -644,10 +638,10 @@ void emulate () {
 
           case 14:  // Shift - assumes >> applied to a signed long or int is arithmetic
 	    {
-              int places = m & ADDR_MASK;
-	      long long al  = (long long) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
-	      long long ql  = qReg;
-	      long long aql = (al << 18) | ql;
+              INT32       places = m & ADDR_MASK;
+	      const INT64 al  = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	      const INT64 ql  = qReg;
+	      INT64       aql = (al << 18) | ql;
 	      
 	      if   ( places <= 2047 )
 	        {
@@ -671,20 +665,20 @@ void emulate () {
 	          /* NOT REACHED */
 	        }
 
-	      qReg = (int) (aql & MASK18L);
-	      aReg = (int) ((aql >> 18) & MASK18L);
+	      qReg = (int) (aql & MASK18);
+	      aReg = (int) ((aql >> 18) & MASK18);
 	      break;
 	    }
 
             case 15:  // Input/output etc
 	      {
-                int z = m & ADDR_MASK;
+                const INT32 z = m & ADDR_MASK;
 	        switch   ( z )
 	    	  {
 
 		    case 2048: // read from tape reader
 		      { 
-	                int ch = readTape(); 
+	                const INT32 ch = readTape(); 
 	                aReg = ((aReg << 7) | ch) & MASK18;
 			emTime += 4000; // assume 250 ch/s reader
 	                break;
@@ -692,7 +686,7 @@ void emulate () {
 
 	            case 2052: // read from teletype
 		      {
-	                int ch = readTTY();
+	                const INT32 ch = readTTY();
 	                aReg = ((aReg << 7) | ch) & MASK18;
 			emTime += 100000; // assume 10 ch/s teletype
 	                break;
@@ -779,7 +773,7 @@ void emulate () {
         }
 
         // check for dynamic stop
-        if   ( s == lastSCR ) 
+        if   ( store[scReg] == lastSCR ) 
 	  {
 	    flushTTY();
 	    if   ( verbose & 1 )
@@ -806,10 +800,9 @@ void emulate () {
   // execution complete
   if   ( verbose & 1 ) // print statistics
     {
-      int i;
       fprintf(diag, "exit code %d\n", exitCode);
       fprintf(diag, "Function code count\n");
-      for ( i = 0 ; i <= 15 ; i++ )
+      for ( INT32 i = 0 ; i <= 15 ; i++ )
 	{
 	  fprintf(diag, "%4d: %8lld (%3lld%%)", i, fCount[i], (fCount[i] * 100L) / iCount);
 	  if  ( ( i % 4) == 3 ) fputc('\n', diag);
@@ -829,8 +822,7 @@ void emulate () {
 
  
 void clearStore() {
-  int i;
-  for ( i = 0 ; i < STORE_SIZE ; i++ ) store[i] = 0;
+  for ( INT32 i = 0 ; i < STORE_SIZE ; i++ ) store[i] = 0;
   if  ( verbose & 1 )
     fprintf(diag, "Store (%d words) cleared\n", STORE_SIZE);
 }
@@ -840,7 +832,7 @@ void readStore () {
   if   ( f != NULL )
     {
       // read store image from file
-      int i = 0, n, c;
+      INT32 i = 0, n, c;
       while ( (c = fscanf(f, "%d", &n)) == 1 )
 	{
 	  if  ( i >= STORE_SIZE )
@@ -876,13 +868,12 @@ void readStore () {
 
 void writeStore () {
    FILE *f = fopen(storePath, "w");
-   int i;
    if  ( f == NULL ) {
      fprintf(stderr, ERR_FOPEN_STORE_FILE);
      perror(storePath);
       exit(EXIT_FAILURE);
       /* NOT REACHED */ }
-   for ( i = 0 ; i < STORE_SIZE ; ++i )
+   for ( INT32 i = 0 ; i < STORE_SIZE ; ++i )
      {
        fprintf(f, "%7d", store[i]);
        if  ( ((i%10) == 0) && (i!=0) ) fputc('\n', f);
@@ -898,11 +889,11 @@ void writeStore () {
 /**********************************************************/
 
 
- void printDiagnostics(int instruction, int f, int a) {
+ void printDiagnostics(INT32 instruction, INT32 f, INT32 a) {
    // extend sign bit for A, Q and B register values
-   int an = ( aReg >= BIT18 ? aReg - BIT19 : aReg); 
-   int qn = ( qReg >= BIT18 ? qReg - BIT19 : qReg);
-   int bn = ( store[bReg] >= BIT18 ? store[bReg] - BIT19 : store[bReg]);
+   INT32 an = ( aReg >= BIT18 ? aReg - BIT19 : aReg); 
+   INT32 qn = ( qReg >= BIT18 ? qReg - BIT19 : qReg);
+   INT32 bn = ( store[bReg] >= BIT18 ? store[bReg] - BIT19 : store[bReg]);
    fprintf(diag, "%10lld   ", iCount); // instruction count
    printAddr(diag, lastSCR);    // SCR and registers
    if   (instruction & BIT18 )
@@ -922,8 +913,8 @@ void writeStore () {
     fprintf(diag, ")\n");
 }
 
-void printTime (long long us) { // print out time in us
-   int hours, mins; float secs;
+void printTime (INT64 us) { // print out time in us
+   INT32 hours, mins; float secs;
    hours = us / 360000000L;
    us -= (hours * 360000000L);
    mins = us / 60000000L;
@@ -931,13 +922,13 @@ void printTime (long long us) { // print out time in us
    fprintf(diag, "%d hours, %d minutes and %2.2f seconds", hours, mins, secs);
 }
 
- void printAddr (FILE *f, int addr) { // print out address in module form
+ void printAddr (FILE *f, INT32 addr) { // print out address in module form
    fprintf(f, "%d^%04d", (addr >> MOD_SHIFT) & 7, addr & ADDR_MASK);
 }
 
 /* Exit and tidy up */
  
-void tidyExit (int reason) {
+void tidyExit (INT32 reason) {
   if ( storeValid )
     {
       flushTTY();
@@ -946,7 +937,7 @@ void tidyExit (int reason) {
 	fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
       if  ( ptrFile  != NULL )
 	{
-	  int ch;
+	  INT32 ch;
 	  FILE *ptrFile2 = fopen(RDR_FILE, "wb");
 	  if  ( ptrFile2 == NULL )
 	    {
@@ -978,7 +969,7 @@ void tidyExit (int reason) {
 
 void setupPlotter (void)
 {
-    int paperSize = 3*plotterPaperWidth*plotterPaperHeight; 
+    INT32 paperSize = 3*plotterPaperWidth*plotterPaperHeight; 
     // Using 24bit R,G,B so 3 bytes per pixel.
     plotterPaper = malloc(paperSize);
 
@@ -997,7 +988,7 @@ void setupPlotter (void)
 void savePlotterPaper (void)
 {
     char *title = "Elliott 903 Plotter Output";
-    int y;
+    INT32 y;
     FILE *fp;
     png_structp png_ptr;
     png_infop info_ptr;
@@ -1066,10 +1057,10 @@ void savePlotterPaper (void)
 
 }
 
-void movePlotter(int bits)
+void movePlotter(INT32 bits)
 {
-  static int firstCall = TRUE;
-  int address;
+  static INT32 firstCall = TRUE;
+  INT32 address;
 
   if  ( firstCall )  // Only try once !
     {
@@ -1093,9 +1084,8 @@ void movePlotter(int bits)
  
   if ( plotterPenDown )
     {
-      int x, y;
-      for ( x = plotterPenX-plotterPenSize; x <= plotterPenX+plotterPenSize; x++ )
-	  for ( y = plotterPenY-plotterPenSize; y <= plotterPenY+plotterPenSize; y++ )
+      for ( INT32 x = plotterPenX-plotterPenSize; x <= plotterPenX+plotterPenSize; x++ )
+	  for ( INT32 y = plotterPenY-plotterPenSize; y <= plotterPenY+plotterPenSize; y++ )
 	    if  ( (y >= 0) && ( y < plotterPaperHeight) ) // trim if outside N and S margins
 	      {
 		address = (y*plotterPaperWidth*3)+(x*3);
@@ -1114,8 +1104,8 @@ void movePlotter(int bits)
 
 
 /* Paper tape reader */
-int readTape() {
-  int ch;
+INT32 readTape() {
+  INT32 ch;
   if   ( ptrFile == NULL )
     {
       if  ( (ptrFile = fopen(ptrPath, "rb")) == NULL )
@@ -1154,7 +1144,7 @@ int readTape() {
 }
 
 /* paper tape punch */
-void punchTape(int ch) {
+void punchTape(INT32 ch) {
   if ( punchCount++ >= REEL )
     {
       flushTTY();
@@ -1197,8 +1187,8 @@ void punchTape(int ch) {
 }
 
 /* Teletype */
-int readTTY() {
-  int ch;
+INT32 readTTY() {
+  INT32 ch;
   if   ( ttyCount++ >= REEL )
     {
       flushTTY();
@@ -1246,8 +1236,8 @@ int readTTY() {
     return 0;   // Too keep gcc happy
 }
 
-void writeTTY(int ch) {
-  int ch2 = ( ((ch &= 127) == 10 ) || ((ch >= 32) && (ch <= 122)) ? ch : -1 );
+void writeTTY(INT32 ch) {
+  INT32 ch2 = ( ((ch &= 127) == 10 ) || ((ch >= 32) && (ch <= 122)) ? ch : -1 );
   if  ( verbose & 8 )
     {
       flushTTY();
@@ -1292,6 +1282,6 @@ void loadII() {
     fprintf(diag, "Initial orders loaded\n");
 }
 
-int makeIns(int m, int f, int a) {
+INT32 makeIns(INT32 m, INT32 f, INT32 a) {
   return ((m << 17) | (f << 13) | a);
 }
