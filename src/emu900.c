@@ -172,8 +172,8 @@
 /*                         GLOBALS                        */
 /**********************************************************/
 
-typedef int_fast32_t INT32;
-typedef int_fast64_t INT64;
+typedef int32_t INT32;
+typedef int64_t INT64;
 
 
 /* Diagnostics related variables */
@@ -804,7 +804,8 @@ void emulate () {
       fprintf(diag, "Function code count\n");
       for ( INT32 i = 0 ; i <= 15 ; i++ )
 	{
-	  fprintf(diag, "%4d: %8lld (%3lld%%)", i, fCount[i], (fCount[i] * 100L) / iCount);
+	  fprintf(diag, "%4d: %8lld (%3lld%%)",
+		  i, fCount[i], (fCount[i] * 100L) / iCount);
 	  if  ( ( i % 4) == 3 ) fputc('\n', diag);
 	}
        fprintf(diag, "%lld instructions executed in ", iCount);
