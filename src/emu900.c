@@ -243,6 +243,7 @@ void  usage(poptContext optCon, INT32 exitcode, char *error, char *addl);
 void  catchInt();              // interrupt handler
 INT32 addtoi(char* arg);       // read numeric part of argument
 void  emulate();               // run emulation
+void  checkAddress(INT32 addr);// check address within store bounds
 void  clearStore();            // clear main store
 void  readStore();             // read in a store image
 void  tidyExit();              // tidy up and exit
@@ -497,13 +498,8 @@ void emulate () {
       
       // increment SCR
       lastSCR = store[scReg];
-      store[scReg]++;         
-      if   ( lastSCR >= STORE_SIZE )
-        {
-	  flushTTY();
-          fprintf(diag, "*** SCR has overflowed the store (SCR = %d)\n", lastSCR);
-  	  tidyExit(EXIT_FAILURE);
-        }
+      store[scReg]++;
+      checkAddress(lastSCR);
 
       // fetch and decode instruction;
       instruction = store[lastSCR];
@@ -525,6 +521,7 @@ void emulate () {
         {
 
         case 0: // Load B
+	    checkAddress(m);
 	    qReg = store[m]; store[bReg] = qReg;
 	    emTime += 30;
 	    break;
@@ -535,16 +532,19 @@ void emulate () {
 	    break;
 
           case 2: // Negate and add
+	    checkAddress(m);
 	    aReg = (store[m] - aReg) & MASK18;
 	    emTime += 26;
 	    break;
 
           case 3: // Store Q
+	    checkAddress(m);
 	    store[m] = qReg >> 1;
 	    emTime += 25;
 	    break;
 
           case 4: // Load A
+	    checkAddress(m);
 	    aReg = store[m];
 	    emTime += 23;
 	    break;
@@ -557,11 +557,15 @@ void emulate () {
 		      "Write to initial instructions ignored in priority level 1");
 	      }
 	    else
-	      store[m] = aReg; 
+	      {
+		checkAddress(m);
+	        store[m] = aReg;
+	      }
 	    emTime += 25;
 	    break;
 
           case 6: // Collate
+	    checkAddress(m);
 	    aReg &= store[m];
 	    emTime += 23;
 	    break;
@@ -595,6 +599,7 @@ void emulate () {
 	    break;
 
           case 10: // increment in store
+	    checkAddress(m);
  	    store[m] = (store[m] + 1) & MASK18;
 	    emTime += 24;
 	    break;
@@ -609,31 +614,37 @@ void emulate () {
 
           case 12:  // Multiply
 	    {
-	      // extend sign bits for a and store[m]
-	      const INT64 al = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
-	      const INT64 sl = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-	      INT64  prod = al * sl;
-	      qReg = (INT32) ((prod << 1) & MASK18 );
-	      if   ( al < 0 ) qReg |= 1;
-	      prod = prod >> 17; // arithmetic shift
- 	      aReg = (int) (prod & MASK18);
-	      emTime += 79;
-	      break;
+	      checkAddress(m);
+	      {
+	        // extend sign bits for a and store[m]
+	        const INT64 al = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
+	        const INT64 sl = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+	        INT64  prod = al * sl;
+	        qReg = (INT32) ((prod << 1) & MASK18 );
+	        if   ( al < 0 ) qReg |= 1;
+	        prod = prod >> 17; // arithmetic shift
+ 	        aReg = (int) (prod & MASK18);
+	        emTime += 79;
+	        break;
+	      }
 	    }
 
           case 13:  // Divide
 	    {
-	      // extend sign bit for aq
-	      const INT64 al   = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
-	      const INT64 ql   = (INT64) qReg;
-	      const INT64 aql  = (al << 18) | ql;
-	      const INT64 ml   = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
-              const INT64 quot = (( aql / ml) >> 1) & MASK18;
-	      const INT32 q     = (INT32) quot;
-  	      aReg = q | 1;
-	      qReg = q & 0777776;
-	      emTime += 79;
-	      break;
+	      checkAddress(m);
+	      {
+	        // extend sign bit for aq
+	        const INT64 al   = (INT64) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	        const INT64 ql   = (INT64) qReg;
+	        const INT64 aql  = (al << 18) | ql;
+	        const INT64 ml   = (INT64) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+                const INT64 quot = (( aql / ml) >> 1) & MASK18;
+	        const INT32 q     = (INT32) quot;
+  	        aReg = q | 1;
+	        qReg = q & 0777776;
+	        emTime += 79;
+	        break;
+	      }
 	    }
 
           case 14:  // Shift - assumes >> applied to a signed long or int is arithmetic
@@ -814,6 +825,16 @@ void emulate () {
      }
 
   tidyExit(exitCode);
+}
+
+void checkAddress(INT32 addr)
+{
+  if   ( addr >= STORE_SIZE )
+        {
+	  flushTTY();
+          fprintf(diag, "*** Address outside of available store (%d)\n", addr);
+  	  tidyExit(EXIT_FAILURE);
+        }
 }
 
 
