@@ -24,16 +24,19 @@ cat .translate
 grep --silent "^FAIL$" .translate
 if [ $? != 0 ]
 then
-    echo
     #echo scan library
-    ./emu900 -j=9 $2 -reader=bin/903algol/algol_tape3_iss7_plotting
-    echo
-    echo
+    grep --silent "^FIRST  NEXT" .translate
     if [ $? != 0 ]
-    then exit $?
+    then
+        ./emu900 -j=9 $2 -reader=bin/903algol/algol_tape3_iss7_plotting
+        #echo library scan completed $?
+        if [ $? != 0 ]
+        then exit $?
+        fi
     fi
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.save
+    #echo process output
     touch .punch
     ./from900text
     if  [ ! -s .ascii ]
