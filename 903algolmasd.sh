@@ -16,25 +16,30 @@ cp bin/903algol/alg16klg_masd_store .store
 ./to900text demos/903algol/$1.txt
 #echo run translator in library mode
 ./emu900 -j=12 $2 >.translate
-cp .reader .save
 if [ $? != 0 ]
 then exit $?
 fi
-cat .translate
+cp .reader .save # there might be data following the source cose
+cat .translate # display translator output
+# check to see if translation failed
 grep --silent "^FAIL$" .translate
 if [ $? != 0 ]
 then
+    # check to see if need to scan the library tape or not
     grep --silent "^FIRST  NEXT" .translate
     if [ $? != 0 ]
     then
+	#echo Library scan
         ./emu900 -j=9 $2 -reader=bin/903algol/algol_tape3_iss5_plotting
-        #echo library scan completed $?
         if [ $? != 0 ]
         then exit $?
         fi
     fi
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.save
+    if [ $? != 0 ]
+    then exit $?
+    fi
     touch .punch
     ./from900text
     if  [ ! -s .ascii ]
