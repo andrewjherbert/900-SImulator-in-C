@@ -17,7 +17,7 @@ cp bin/903algol/alg16klg_masd_store .store
 #echo run translator in library mode
 ./emu900 -j=12 $2 >.translate
 if [ $? != 0 ]
-then if [ $? = 2 }
+then if [ $? == 2 ]
      then echo "Translator ran off end of input tape"
      fi
      exit $?
@@ -41,7 +41,10 @@ then
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.save
     if [ $? != 0 ]
-    then exit $?
+    then if [ $? == 2 ]
+	 then echo "Translator ran off input data tape"
+	 fi
+	 exit $?
     fi
     touch .punch
     ./from900text
