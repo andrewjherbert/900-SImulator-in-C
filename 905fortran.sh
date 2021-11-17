@@ -36,6 +36,9 @@ then
     rm .punch
     touch .punch
     ./emu900 -j=16 -reader=.save -ttyin=bin/905fortran/MM
+    if [ $? == 2 ]
+    then echo -en "\n*** Program ran off end of data tape ***"
+    fi
     echo
     #echo check for punch output
     touch .ascii

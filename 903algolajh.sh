@@ -17,7 +17,10 @@ cp bin/903algol/alg16klg_ajh_store .store
 #echo run translator in library mode
 ./emu900 -j=12 $2 >.translate
 if [ $? != 0 ]
-then exit $?
+then if [ $? == 2 ]
+     then echo -en "\n*** Translator ran off end of source tape ***"
+     fi
+     exit $?
 fi
 cp .reader .save # there might be data following source code
 cat .translate
@@ -37,6 +40,9 @@ then
     fi
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.save
+    if [ $? == 2 ]
+    then echo -en "\n*** Program ran off end of data tape ***"
+    fi
     #echo process output
     touch .punch
     ./from900text

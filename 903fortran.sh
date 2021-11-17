@@ -17,15 +17,21 @@ echo convert input tape $1
 echo read program
 ./emu900 -j=8 $2 >.translate
 if [ $? != 0 ]
-then exit $?
+then if [ $? == 2 ]
+     then echo -en "\n*** Translator ran off end of source tape ***"
+     fi
+     exit $?
 fi
 if [ ! -s .translate ]
 then
-    echo signal program complete
+    echo finalize program
     ./emu900 -j=10
     echo
     echo run program
     ./emu900 -j=11
+    if [ $? == 2 ]
+    then echo -en "\n*** Program ran off end of data tape ***"
+    fi
     echo
     echo
     touch .punch

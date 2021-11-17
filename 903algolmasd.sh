@@ -18,11 +18,11 @@ cp bin/903algol/alg16klg_masd_store .store
 ./emu900 -j=12 $2 >.translate
 if [ $? != 0 ]
 then if [ $? == 2 ]
-     then echo "Translator ran off end of input tape"
+     then echo -en "\n*** Translator ran off end of input tape ***"
      fi
      exit $?
 fi
-cp .reader .save # there might be data following the source cose
+cp .reader .save # there might be data following the source code
 cat .translate # display translator output
 # check to see if translation failed
 grep --silent "^FAIL$" .translate
@@ -40,11 +40,8 @@ then
     fi
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.save
-    if [ $? != 0 ]
-    then if [ $? == 2 ]
-	 then echo "Translator ran off input data tape"
-	 fi
-	 exit $?
+    if [ $?  == 2 ]
+    then echo -en "\n*** Program ran off input data tape ***"
     fi
     touch .punch
     ./from900text
