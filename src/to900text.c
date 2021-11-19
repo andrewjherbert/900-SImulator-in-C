@@ -3,7 +3,7 @@
 /* from900text inFile [outFile]                                    */
 /* outFile defaults to .reader                                     */
 /*                                                                 */
-/* Andrew Herbert 6 February 2021                                  */
+/* Andrew Herbert 18 November 2021                                 */
   
 
 #include <stdio.h>
@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <string.h>
 #include <getopt.h>
+#include <locale.h>
+#include <wchar.h>
 
 #define OUTFILE ".reader"    // output file
 
@@ -34,6 +36,8 @@ int addParity (int code);
 int main (int argc, char *argv[]) {
   char *inPath, *outPath = OUTFILE;
   FILE *inFile, *outFile;
+
+  setlocale(LC_ALL, ""); // set system locale
 
   // decode arguments
   if ( argc < 2 )
@@ -68,11 +72,13 @@ int main (int argc, char *argv[]) {
 
 void convert (FILE *inFile, FILE *outFile) {
   static char haltCode[] = HALTCODE;
-  int ch, i, ptr = -1;
-  while ( (ch = fgetc(inFile) ) != EOF)
-    { if ( ch > 128 ) // ignore non-ASCII codes, e.g, if input is in UTF-8
+  int ptr = -1;
+  wchar_t wideCh;
+  fwide (inFile, 1); /* enable wide characters */
+  while ( (wideCh = fgetwc(inFile) ) != WEOF)
+    { if ( wideCh > 128 ) // ignore non-ASCII codes, e.g, if input is in UTF-8
 	  continue; 
-      if ( ch == haltCode[++ptr] )
+      if ( wideCh == haltCode[++ptr] )
 	{ // matching against HALTCODE
           if ( ptr == HALTCODELEN )
 	      { // matched to end
@@ -82,9 +88,9 @@ void convert (FILE *inFile, FILE *outFile) {
 	}
       else
 	{ // match failed, empty buffer and then output character
-	  for ( i = 0 ; i < ptr; i++ )
+	  for ( int i = 0 ; i < ptr; i++ )
 	    fputc(addParity(haltCode[i]), outFile);
-	  fputc(addParity(ch), outFile);
+	  fputc(addParity(wideCh), outFile);
 	  ptr =- 1; // reset pointer
 	};
     };
