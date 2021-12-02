@@ -37,7 +37,10 @@ int main (int argc, char *argv[]) {
   char *inPath, *outPath = OUTFILE;
   FILE *inFile, *outFile;
 
-  setlocale(LC_ALL, ""); // set system locale
+  if ( setlocale(LC_ALL, "")  == NULL) { // set system locale
+    fputs("Unable to set native locale\n", stderr);
+    exit(1);
+  }
 
   // decode arguments
   if ( argc < 2 )
@@ -73,28 +76,26 @@ int main (int argc, char *argv[]) {
 void convert (FILE *inFile, FILE *outFile) {
   static char haltCode[] = HALTCODE;
   int ptr = -1;
-  wchar_t wideCh;
+  wint_t wideCh;
   fwide (inFile, 1); /* enable wide characters */
-  while ( (wideCh = fgetwc(inFile) ) != WEOF)
-    { if ( wideCh > 128 ) // ignore non-ASCII codes, e.g, if input is in UTF-8
-	  continue; 
-      if ( wideCh == haltCode[++ptr] )
-	{ // matching against HALTCODE
-          if ( ptr == HALTCODELEN )
-	      { // matched to end
-	        ptr =- 1; // reset pointer
-	        fputc(20, outFile);
-	      }
-	}
-      else
-	{ // match failed, empty buffer and then output character
-	  for ( int i = 0 ; i < ptr; i++ )
-	    fputc(addParity(haltCode[i]), outFile);
-	  fputc(addParity(wideCh), outFile);
+  while ( (wideCh = fgetwc(inFile) ) != WEOF) {
+    if ( wideCh > 127 ) { // reject non-ASCII codes, e.g, if input is in UTF-8
+      if ( wideCh = 0xefbbbf ) continue; /* BOM */
+      fprintf(stderr, "Non-ASCII character \"%c\" (%d) in input ignored\n", wideCh, wideCh);
+    }
+    if ( wideCh == haltCode[++ptr] ) { // matching against HALTCODE
+      if ( ptr == HALTCODELEN )
+	{ // matched to end
 	  ptr =- 1; // reset pointer
-	};
-    };
-  return;
+	  fputc(20, outFile);
+	}
+    } else { // match failed, empty buffer and then output character
+      for ( int i = 0 ; i < ptr; i++ )
+	fputc(addParity(haltCode[i]), outFile);
+      fputc(addParity(wideCh), outFile);
+      ptr =- 1; // reset pointer
+    }
+  }
 }
 
 int addParity (int code) {
