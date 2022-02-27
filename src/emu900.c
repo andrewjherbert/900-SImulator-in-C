@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 24/02/2022
+// Elliott 903 emulator - Andrew Herbert - 25/02/2022
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -441,25 +441,19 @@ void usage (poptContext optCon, int32_t exitcode, char *error, char *addl)
   exit(exitcode);
 }
 
-int32_t addtoi (char *s) {
-  int32_t module = 0, address = 0;
-  while  ( *s != '\0' )
-    {
-      if  ( isdigit(*s) )
+int32_t addtoi (char *s)
+{  int32_t module = 0, address = 0;
+  while  ( *s != 0 )
+  {  if  ( isdigit(*s) )
         address = address * 10 + *(s++) - (int)'0'; 
-      else if ( *s == '^' )
-        {
-	  module = address * 8192; address = 0; s++;
-	  while ( *s != '\0' ) 
-	    if  ( isdigit(*s) )
-	      address = address * 10 + *(s++) - (int)'0';
-	    else
-	      return -1;
-	  return module + address;
-	} 
-      else return -1;
-    } // while
-  return address;
+     else if ( *(s++) == '^' )
+     {  module = (module  + address) * 8192;
+        address = 0;
+     } 
+     else
+        return -1;
+  } // while
+  return module + address;
 }
 
 
