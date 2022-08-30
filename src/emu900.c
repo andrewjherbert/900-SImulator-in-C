@@ -616,7 +616,7 @@ void emulate () {
 	        qReg = (int32_t) ((prod << 1) & MASK18 );
 	        if   ( al < 0 ) qReg |= 1;
 	        prod = prod >> 17; // arithmetic shift
- 	        aReg = (int) (prod & MASK18);
+ 	        aReg = (int32_t) (prod & MASK18);
 	        emTime += 79;
 	        break;
 	      }
@@ -669,8 +669,8 @@ void emulate () {
 	          /* NOT REACHED */
 	        }
 
-	      qReg = (int) (aql & MASK18);
-	      aReg = (int) ((aql >> 18) & MASK18);
+	      qReg = (int32_t) (aql & MASK18);
+	      aReg = (int32_t) ((aql >> 18) & MASK18);
 	      break;
 	    }
 
