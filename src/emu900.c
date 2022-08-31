@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 25/02/2022
+// Elliott 903 emulator - Andrew Herbert - 31/08/2022
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -526,7 +526,8 @@ void emulate () {
 
           case 2: // Negate and add
 	    checkAddress(m);
-	    aReg = (store[m] - aReg) & MASK18;
+	    qReg = store[m];
+	    aReg = (qReg - aReg) & MASK18;
 	    emTime += 26;
 	    break;
 
@@ -1236,7 +1237,7 @@ int32_t readTTY() {
 	    traceOne = TRUE;
 	    fprintf(diag, "Read character %d from teletype\n", ch);
 	  }
-	putchar(ch); // local echoing assumed
+	putchar(ch & 127); // local echoing and ASCII assumed
         return ch;
       }
     else
