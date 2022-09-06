@@ -1,9 +1,9 @@
-// Elliott 903 emulator - Andrew Herbert - 31/08/2022
+// Elliott 903 emulator - Andrew Herbert - 06/09/2022
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
 // Has simplified handling of priority levels and initial orders.
-// No support (as yet) for: interactive use of teletype, line printer, 
+// No support (as yet) for: interactive use of teletype, line printer,
 // card reader or magnetic tape.
 
 // Plotter support added by Peter Onion 21/03/2021
@@ -23,7 +23,7 @@
 //
 //    1      -- general diagnostic reports, e.g., dynamic stop, etc
 //    2      -- report jumps taken in traces
-//    4      -- report every instruction executed in traces 
+//    4      -- report every instruction executed in traces
 //    8      -- report input/output characters in traces
 //
 // By default diagnostic reports are written to stderr, unless the dfile argument is
@@ -43,10 +43,10 @@
 // The input file should be a raw byte stream representing eight bit paper tape
 // codes, either binary of one of the Elliott telecodes.  There is a companion
 // program "to900text" which converts a UTF-8 character file to its equivalent
-// in Elliott 900 telecode. 
+// in Elliott 900 telecode.
 
 // Teletype input is taken from the file .ttyin unless overridden by the -ttyin
-// argument on the command line. Teletype output is sent to stdout.  
+// argument on the command line. Teletype output is sent to stdout.
 
 // Paper tape output is send to the file .punch, unless overridden by a -punch argument
 // on the command line.  The output is a byte stream of binary characters as would
@@ -68,7 +68,7 @@
 
 // The emulation terminates either when a dynamic stop is detected or about 1.5 days of
 // emulated real time have elapsed.  On a dynamic stop the emulator writes the stop
-// address to the file .stop. 
+// address to the file .stop.
 
 // A smaller limit on maximum number of instructions to be executed can be set using
 // the -abandon command line argument.
@@ -184,7 +184,7 @@ FILE *ttyoFile  = NULL;       // teleprinter output
 
 int32_t verbose   = 0;        // no diagnostics by default
 int32_t diagCount = -1;       // turn diagnostics on at this instruction count
-int32_t abandon   = -1;       // abandon on this instruction count 
+int32_t abandon   = -1;       // abandon on this instruction count
 int32_t diagFrom  = -1;       // turn on diagnostics when first reach this address
 int32_t diagLimit = -1;       // stop after this number of instructions executed
 int32_t monLoc    = -1;       // report if this location changes
@@ -209,7 +209,7 @@ int32_t storeValid = FALSE; // set TRUE when a store image loaded
 int32_t opKeys = 8181; // setting of keys on operator's control panel, overidden by
                        // -j option
 int32_t aReg  = 0, qReg  = 0; // a and q registers
-int32_t bReg  = BREGLEVEL1; // address in store of B register 
+int32_t bReg  = BREGLEVEL1; // address in store of B register
 int32_t scReg = SCRLEVEL1;  // address in store of B register
 int32_t lastSCR;       // used to detect dynamic loops
 int32_t level = 1;     // priority level
@@ -223,11 +223,11 @@ int32_t traceOne           = FALSE; // TRUE => trace current instruction only
 
 /* Plotter */
 unsigned char *plotterPaper = NULL;    // != NULL => plotter has been used.
-  
+
 int32_t plotterPenX, plotterPenY, plotterPenDown, plotterUsed;
 int32_t plotterPaperWidth  = PAPER_WIDTH;
 int32_t plotterPaperHeight = PAPER_HEIGHT;
-int32_t plotterPenSize     = PEN_SIZE;    
+int32_t plotterPenSize     = PEN_SIZE;
 
 
 /**********************************************************/
@@ -303,7 +303,7 @@ void decodeArgs (int32_t argc, const char *argv[])
       {"store",   '\0', POPT_ARG_STRING | POPT_ARGFLAG_ONEDASH,
        &storePath, 0, "store image", "file"},
       {"dfile",   'd',  POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH,
-       0, 1, "diagnostics to file", ""},    
+       0, 1, "diagnostics to file", ""},
       {"abandon", 'a',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
        &abandon, 0, "abandon after n instructions", "integer"},
       {"height",  'h',  POPT_ARG_INT | POPT_ARGFLAG_ONEDASH,
@@ -371,12 +371,12 @@ void decodeArgs (int32_t argc, const char *argv[])
       if ( diagFrom >= STORE_SIZE )
 	usage(optCon, EXIT_FAILURE, "tracing start address outside store bounds", buffer);
       break;
-      
+
     default:
       fprintf(stderr, "internal error in decodeArgs (%d)\n", c);
       exit(EXIT_FAILURE);
       /* NOT REACHED */
-    }					 
+    }
   }
 
   if ( c < -1 ) // bombed out on an error
@@ -385,12 +385,12 @@ void decodeArgs (int32_t argc, const char *argv[])
       exit(EXIT_FAILURE);
       /* NOT REACHED */
     }
-  
+
   if ( (buffer = (char *) poptGetArg(optCon)) != NULL ) // check for extra arguments
        usage(optCon, EXIT_FAILURE, "unexpected argument", buffer);
 
   poptFreeContext(optCon); // release context
-       
+
   // tidy up and report options
   if ( verbose >= 16 )
     {
@@ -445,11 +445,11 @@ int32_t addtoi (char *s)
 {  int32_t module = 0, address = 0;
   while  ( *s != 0 )
   {  if  ( isdigit(*s) )
-        address = address * 10 + *(s++) - (int)'0'; 
+        address = address * 10 + *(s++) - (int)'0';
      else if ( *(s++) == '^' )
      {  module = (module  + address) * 8192;
         address = 0;
-     } 
+     }
      else
         return -1;
   } // while
@@ -476,7 +476,7 @@ void emulate () {
   loadII();      // load initial orders
   ttyoFile = stdout; // teletype output to stdout
   store[scReg] = opKeys; // set SCR from operator control panel keys
-  
+
   if   ( verbose & 1 )
     {
       fprintf(diag,"Starting execution from location ");
@@ -488,7 +488,7 @@ void emulate () {
   // instruction fetch and decode loop
   while ( ++iCount )
     {
-      
+
       // increment SCR
       lastSCR = store[scReg];
       store[scReg]++;
@@ -647,7 +647,7 @@ void emulate () {
 	      const int64_t al  = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
 	      const int64_t ql  = qReg;
 	      int64_t       aql = (al << 18) | ql;
-	      
+
 	      if   ( places <= 2047 )
 	        {
 		  emTime += (24 + 7 * places);
@@ -660,7 +660,7 @@ void emulate () {
 		  emTime += (24 + 7 * places);
 	          if ( places >= 36 ) places = 36;
 		  aql >>= places;
-	        }  
+	        }
 	      else
 	        {
 		  flushTTY();
@@ -682,8 +682,8 @@ void emulate () {
 	    	  {
 
 		    case 2048: // read from tape reader
-		      { 
-	                const int32_t ch = readTape(); 
+		      {
+	                const int32_t ch = readTape();
 	                aReg = ((aReg << 7) | ch) & MASK18;
 			emTime += 4000; // assume 250 ch/s reader
 	                break;
@@ -698,7 +698,7 @@ void emulate () {
 	              }
 
 		  case 4864: // send to plotter
-		    
+
 		      movePlotter(aReg);
 		      if   (aReg >= 16 )
 		      {
@@ -707,10 +707,10 @@ void emulate () {
 		      else
 		      {
 			  emTime += 3300;   // 3.3ms
-		      }		  
+		      }
 		      break;
 
-	            case 6144: // write to paper tape punch 
+	            case 6144: // write to paper tape punch
 	              punchTape(aReg & 255);
 		      emTime += 9091; // assume 110 ch/s punch
 	              break;
@@ -718,8 +718,8 @@ void emulate () {
 	            case 6148: // write to teletype
 	              writeTTY(aReg & 255);
 		      emTime += 100000; // assume 10 ch/s teletype
-	              break;	      
-	  
+	              break;
+
 	            case 7168:  // Level terminate
 	              level = 4;
 	              scReg = SCRLEVEL4;
@@ -767,7 +767,7 @@ void emulate () {
 	    flushTTY();
 	    printDiagnostics(instruction, f, a);
 	  }
-	  
+
 	// check for limits
         if   ( (abandon != -1) && (iCount >= abandon) )
         {
@@ -778,7 +778,7 @@ void emulate () {
         }
 
         // check for dynamic stop
-        if   ( store[scReg] == lastSCR ) 
+        if   ( store[scReg] == lastSCR )
 	  {
 	    flushTTY();
 	    if   ( verbose & 1 )
@@ -836,7 +836,7 @@ void checkAddress(int32_t addr)
 /*              STORE DUMP AND RECOVERY                   */
 /**********************************************************/
 
- 
+
 void clearStore() {
   for ( int32_t i = 0 ; i < STORE_SIZE ; i++ ) store[i] = 0;
   if  ( verbose & 1 )
@@ -876,7 +876,7 @@ void readStore () {
       if   ( verbose & 1 )
 	fprintf(diag, "%d words read in from %s\n", i, storePath);
     }
-  else if  ( verbose & 1 ) 
+  else if  ( verbose & 1 )
     fprintf (diag, "No %s file found, store left empty\n", storePath);
 
   storeValid = TRUE;
@@ -907,7 +907,7 @@ void writeStore () {
 
  void printDiagnostics(int32_t instruction, int32_t f, int32_t a) {
    // extend sign bit for A, Q and B register values
-   int32_t an = ( aReg >= BIT18 ? aReg - BIT19 : aReg); 
+   int32_t an = ( aReg >= BIT18 ? aReg - BIT19 : aReg);
    int32_t qn = ( qReg >= BIT18 ? qReg - BIT19 : qReg);
    int32_t bn = ( store[bReg] >= BIT18 ? store[bReg] - BIT19 : store[bReg]);
    fprintf(diag, "%10lld   ", iCount); // instruction count
@@ -943,7 +943,7 @@ void printTime (int64_t us) { // print out time in us
 }
 
 /* Exit and tidy up */
- 
+
 void tidyExit (int32_t reason) {
   if ( storeValid )
     {
@@ -985,7 +985,7 @@ void tidyExit (int32_t reason) {
 
 void setupPlotter (void)
 {
-    int32_t paperSize = 3*plotterPaperWidth*plotterPaperHeight; 
+    int32_t paperSize = 3*plotterPaperWidth*plotterPaperHeight;
     // Using 24bit R,G,B so 3 bytes per pixel.
     plotterPaper = malloc(paperSize);
 
@@ -1010,7 +1010,7 @@ void savePlotterPaper (void)
     png_infop info_ptr;
 
     if  ( plotterPaper == NULL ) return;
-    
+
 	// Open file for writing (binary mode)
 	fp = fopen(plotPath, "wb");
 	if  ( fp == NULL ) {
@@ -1089,15 +1089,15 @@ void movePlotter(int32_t bits)
   if  ( verbose & 8 ) fprintf(diag, "Plotter code %1o output\n", bits & 63);
 
   // hard stop at E and W margins
-  if  ( (bits & 1 ) && (plotterPenX < plotterPaperWidth ) ) 
+  if  ( (bits & 1 ) && (plotterPenX < plotterPaperWidth ) )
 		     plotterPenX+=1; // East
-  if  ( (bits & 2 ) && (plotterPenX > 0 ) ) 
+  if  ( (bits & 2 ) && (plotterPenX > 0 ) )
 		     plotterPenX-=1; // West
   if  ( bits &  4 )  plotterPenY-=1; // North
   if  ( bits &  8 )  plotterPenY+=1; // South
   if  ( bits & 16 )  plotterPenDown = FALSE;
   if  ( bits & 32 )  plotterPenDown = TRUE;
- 
+
   if ( plotterPenDown )
     {
       for ( int32_t x = plotterPenX-plotterPenSize; x <= plotterPenX+plotterPenSize; x++ )
