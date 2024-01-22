@@ -12,34 +12,35 @@
 //    LIBOPT for command line decoding
 //    LIBPNG for plotter output
 
-// Usage: emu900 [-d?] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
-//        [-save=file] [-store=file] [-d|-dfile] [-a|-abandon=integer]
+// Usage: emu900 [-d] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
+//        [-save=file] [-store=file] [-a|-abandon=integer]
 //        [-h|-height=integer] [-j|-jump=integer] [-m|-monitor=address]
-//        [-p|-Pen=integer] [-r|-rtrace=integer] [-s|-start=address] [-t|-trace=integer]
-//        [-w|-width=integer] [-v|-verbose=integer] [-?|--help] [--usage]
+//        [-p|-Pen=integer] [-r|-rtrace=integer] [-s|-start=address] 
+//        [-t|-trace=integer] [-w|-width=integer] [-v|-verbose=integer] .
+//        [-?|--help] [--usage]
 
-// Verbosity is controlled by the -v argument.  The level of reporting can be selected
-// by ORing the following values:
+// Verbosity is controlled by the -v argument.  The level of reporting can be 
+// selected by ORing the following values:
 //
 //    1      -- general diagnostic reports, e.g., dynamic stop, etc
 //    2      -- report jumps taken in traces
 //    4      -- report every instruction executed in traces
 //    8      -- report input/output characters in traces
-//
-// By default diagnostic reports are written to stderr, unless the dfile argument is
-// present in which case the reports are written to the file log.txt.
 
-// At beginning reads in contents of store from the file .store by default unless
-// overridden by the -store argument. If the file cannot be found the store is set to
-// all zeros. At the end of run the emulator dumps out contents of store to the store
-// file, unless there have been catastrophic errors. This is to simulate
-// retention of data in core store between entry points.
+// By default diagnostic reports are written to stderr, unless the dfile 
+// argument ispresent in which case the reports are written to the file log.txt.
 
-// Paper tape input from the file .reader unless overridden by the -reader argument on
-// the command line. At the end it copies any unconsumed input back to the file
-// overwriting previous content, unless there have been catastrophic errors to the file
-// .save unless overridden by the -save argument on the command line. This is to
-// emulate leaving a tape in the reader between successive runs.
+// At beginning reads in contents of store from the file .store by default
+// unless overridden by the -store argument. If the file cannot be found the 
+// store is set to all zeros. At the end of run the emulator dumps out contents 
+// of store to the store file, unless there have been catastrophic errors. This 
+// is to simulate retention of data in core store between entry points.
+
+// Paper tape input from the file .reader unless overridden by the -reader 
+// argument on the command line. At the end of a run any unconsumed input is 
+// copied  to the file .save unless overridden by the -save argument on the 
+// command  line. This is to help with emulating leaving a tape in the reader 
+// between successive runs.
 
 // The input file should be a raw byte stream representing eight bit paper tape
 // codes, either binary of one of the Elliott telecodes.  There is a companion
@@ -49,44 +50,47 @@
 // Teletype input is taken from the file .ttyin unless overridden by the -ttyin
 // argument on the command line. Teletype output is sent to stdout.
 
-// Paper tape output is send to the file .punch, unless overridden by a -punch argument
-// on the command line.  The output is a byte stream of binary characters as would
-// have been output to the physical punch.  There is a companion program "from900text"
-// which converts a file containing 900 telecode output to it's UTF-8 equivalent.
+// Paper tape output is send to the file .punch, unless overridden by a -punch 
+// argument on the command line.  The output is a byte stream of binary // 
+// characters as would have been output to the physical punch.  There is a 
+// companion program "from900text" which converts a file containing 900 telecode 
+// output to it's UTF-8 equivalent.
 
-// There is a limit of output characters on paper tape or teletype roughly equal to a
-// reel of paper tape (120,000 characters).
+// There is a limit of output characters on paper tape or teletype roughly equal 
+// to a reel of paper tape (120,000 characters).
 
-// Plotter output is sent to the file .plot.png unless overridden by a -plot argument.
-// The output is in a PHG format.
+// Plotter output is sent to the file .plot.png unless overridden by a -plot 
+// argument. The output is in a PNG format.
 
-// The size of the plotting area can be set using the -width and -height command line
-// arguments.  These set the size in plotter steps.  The size of the pen nib can be
-// set using the -pen command line argument.  The default is 3 steps (0.3mm).
+// The size of the plotting area can be set using the -width and -height command 
+// line arguments.  These set the size in plotter steps.  The size of the pen 
+// nib can be set using the -pen command line argument.  The default is 3 steps 
+// (0.3mm).
 
-// By default the simulator jumps to 8181 to start execution, unless overriden by
-// -jump argument on the command line.  The jump address can be in the range 0-8191.
+// By default the simulator jumps to 8181 to start execution, unless overriden 
+// by -jump argument on the command line.  The jump address can be in the range 
+// 0-8191.
 
-// The emulation terminates either when a dynamic stop is detected or about 1.5 days of
-// emulated real time have elapsed.  On a dynamic stop the emulator writes the stop
-// address to the file .stop.
+// The emulation terminates either when a dynamic stop is detected or about 1.5 
+// days of emulated real time have elapsed.  On a dynamic stop the emulator 
+// writes the stop address to the file .stop.
 
-// A smaller limit on maximum number of instructions to be executed can be set using
-// the -abandon command line argument.
+// A smaller limit on maximum number of instructions to be executed can be set 
+// using the -abandon command line argument.
 
-// A specific store location can be monitored for be written to using the -monitor
-// command line argument.  The address must not exceed the available store size.
+// A specific store location can be monitored for be written to using the 
+// -monitor command line argument.  The address must not exceed the available 
+// store size.
 
-// The -start argument starts tracing from the specified location. -trace turns on
-// tracing after the specified number of instructions have been executed. -rtrace is
-// like -start but stops tracing after a further 1000 instructions have been executed.
-// -trace overrides -trace.  -trace/-rtrace and -start can both be specified and tracing
-// will start from whichever condition occurs first.  The address part of -start must not
-// exceed the available store size.
+// The -start argument starts tracing from the specified location. -trace turns 
+// on tracing after the specified number of instructions have been executed. 
+// -rtrace is like -start but stops tracing after a further 1000 instructions 
+// have been executed.  -trace overrides -trace.  -trace/-rtrace and -start can 
+// both be specified and tracing will start from whichever condition occurs 
+// first.  The address part of -start must not exceed the available store size.
 
-// Addresses for the -start and -monitor arguments can be written in the form m^a where
-// m represents an 8K store module number and a an address within the selected store
-// module.
+// Addresses for the -start and -monitor arguments can be written in the form 
+// m^a where m represents an 8K store module number and a an address within the // selected store module.
 
 // The program exits with an exit code indicating the reason for completion,
 // e.g., 0 = dynamic stop, 1 = run out of paper tape input, etc. 2 = run out of
@@ -177,7 +181,8 @@
 
 
 /* Diagnostics related variables */
-FILE *diag      = NULL;      // diagnostics output - set to either  stderr or .log
+FILE *diag      = NULL;      // diagnostics output - set to either stderr or 
+                             // .log
 
 /* File handles for peripherals */
 FILE *ptrFile   = NULL;       // paper tape reader
@@ -188,7 +193,8 @@ FILE *ttyoFile  = NULL;       // teleprinter output
 int32_t verbose   = 0;        // no diagnostics by default
 int32_t diagCount = -1;       // turn diagnostics on at this instruction count
 int32_t abandon   = -1;       // abandon on this instruction count
-int32_t diagFrom  = -1;       // turn on diagnostics when first reach this address
+int32_t diagFrom  = -1;       // turn on diagnostics when first reach this 
+                              // address
 int32_t diagLimit = -1;       // stop after this number of instructions executed
 int32_t monLoc    = -1;       // report if this location changes
 int32_t monLast   = -1;
@@ -209,8 +215,8 @@ int32_t store [STORE_SIZE];
 int32_t storeValid = FALSE; // set TRUE when a store image loaded
 
 /* Machine state */
-int32_t opKeys = 8181; // setting of keys on operator's control panel, overidden by
-                       // -j option
+int32_t opKeys = 8181; // setting of keys on operator's control panel, overidden 
+                       // by -j option
 int32_t aReg  = 0, qReg  = 0; // a and q registers
 int32_t bReg  = BREGLEVEL1; // address in store of B register
 int32_t scReg = SCRLEVEL1;  // address in store of B register
@@ -248,7 +254,8 @@ void  clearStore();              // clear main store
 void  readStore();               // read in a store image
 void  tidyExit(int32_t reason);  // tidy up and exit
 void  writeStore();              // dump out store image
-void  printDiagnostics(int32_t i, int32_t f, int32_t a); // print diagnostic information for current instruction
+void  printDiagnostics(int32_t i, int32_t f, int32_t a); // print diagnostic 
+                                 // information for current instruction
 void  printTime(int64_t us);     // print out time counted in microseconds
 void  printAddr(FILE *f, int32_t addr); // print address in m^nnn format
 
@@ -372,7 +379,8 @@ void decodeArgs (int32_t argc, const char *argv[])
       if ( diagFrom == -1 )
 	usage(optCon, EXIT_FAILURE, "malformed address", buffer);
       if ( diagFrom >= STORE_SIZE )
-	usage(optCon, EXIT_FAILURE, "tracing start address outside store bounds", buffer);
+	usage(optCon, EXIT_FAILURE, "tracing start address outside store bounds", 
+	    buffer);
       break;
 
     default:
@@ -389,7 +397,8 @@ void decodeArgs (int32_t argc, const char *argv[])
       /* NOT REACHED */
     }
 
-  if ( (buffer = (char *) poptGetArg(optCon)) != NULL ) // check for extra arguments
+  if ( (buffer = (char *) poptGetArg(optCon)) != NULL ) // check for extra 
+                                                        // arguments
        usage(optCon, EXIT_FAILURE, "unexpected argument", buffer);
 
   poptFreeContext(optCon); // release context
@@ -412,21 +421,25 @@ void decodeArgs (int32_t argc, const char *argv[])
         fprintf(diag, "Paper tape will be punched to %s\n", punPath);
         fprintf(diag, "Teletype input will be read from %s\n", ttyInPath);
         fprintf(diag, "Plotter output will go to %s\n", plotPath);
-	fprintf(diag, "Plotter paper width %d, height %d\n", plotterPaperWidth, plotterPaperHeight);
+	fprintf(diag, "Plotter paper width %d, height %d\n", plotterPaperWidth,
+	        plotterPaperHeight);
 	fprintf(diag, "Plotter pen size %d steps\n", plotterPenSize);
         fprintf(diag, "Store image will be read from %s\n", storePath);
 	fprintf(diag, "Execution will commence at address ");
 	printAddr(diag, opKeys);
 	fprintf(diag," (%d)\n", opKeys);
         if ( abandon >= 0 )
-	  fprintf(diag, "Execution will be abandoned after %d instructions executed\n",
+	  fprintf(diag, 
+	          "Execution will be abandoned after %d instructions executed\n",
 		    abandon);
 	if ( diagCount >= 0 )
-	  fprintf(diag, "Tracing will start after %d instructions executed\n", diagCount);
+	  fprintf(diag, "Tracing will start after %d instructions executed\n", 
+	         diagCount);
 	if ( diagFrom >= 0 )
 	  fprintf(diag, "Tracing will start from location %d onwards\n", diagFrom);
 	if ( diagLimit >= 0 )
-	  fprintf(diag, "Limited tracing will start after %d instructions executed\n",
+	  fprintf(diag, 
+	          "Limited tracing will start after %d instructions executed\n",
 		  diagLimit);
 	if ( monLoc >= 0 )
 	  {
@@ -614,8 +627,10 @@ void emulate () {
 	      checkAddress(m);
 	      {
 	        // extend sign bits for a and store[m]
-	        const int64_t al = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg );
-	        const int64_t sl = (int64_t) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+	        const int64_t al = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19  
+	                                                : aReg ); // sign extend
+	        const int64_t sl = (int64_t) ( ( store[m] >= BIT18 ) ? store[m] -               
+	                                           BIT19 : store[m] );
 	        int64_t  prod = al * sl;
 	        qReg = (int32_t) ((prod << 1) & MASK18 );
 	        if   ( al < 0 ) qReg |= 1;
@@ -631,10 +646,12 @@ void emulate () {
 	      checkAddress(m);
 	      {
 	        // extend sign bit for aq
-	        const int64_t al   = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	        const int64_t al   = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 
+	                                              : aReg ); // sign extend
 	        const int64_t ql   = (int64_t) qReg;
 	        const int64_t aql  = (al << 18) | ql;
-	        const int64_t ml   = (int64_t) ( ( store[m] >= BIT18 ) ? store[m] - BIT19 : store[m] );
+	        const int64_t ml   = (int64_t) ( ( store[m] >= BIT18 ) ? store[m] -
+	                                               BIT19 : store[m] );
                 const int64_t quot = (( aql / ml) >> 1) & MASK18;
 	        const int32_t q     = (int32_t) quot;
   	        aReg = q | 1;
@@ -644,10 +661,12 @@ void emulate () {
 	      }
 	    }
 
-          case 14:  // Shift - assumes >> applied to a signed long or int is arithmetic
+          case 14:  // Shift - assumes >> applied to a signed long or int is                     
+                    // arithmetic
 	    {
               int32_t       places = m & ADDR_MASK;
-	      const int64_t al  = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 : aReg ); // sign extend
+	      const int64_t al  = (int64_t) ( ( aReg >= BIT18 ) ? aReg - BIT19 
+	                                                : aReg ); // sign extend
 	      const int64_t ql  = qReg;
 	      int64_t       aql = (al << 18) | ql;
 
@@ -750,7 +769,8 @@ void emulate () {
           }
 
         // check to see if need to start diagnostic tracing
-        if   ( (lastSCR == diagFrom) || ( (diagCount != -1) && (iCount >= diagCount)) )
+        if   ( (lastSCR == diagFrom) || ( (diagCount != -1) && (iCount >= 
+                                                                diagCount)) )
 	    tracing = TRUE;
         if   ( iCount == diagLimit )
 	  {
@@ -856,7 +876,8 @@ void readStore () {
 	{
 	  if  ( i >= STORE_SIZE )
 	    {
-	      fprintf(stderr, "*** %s exceeds store capacity (%d)\n", storePath, STORE_SIZE);
+	      fprintf(stderr, "*** %s exceeds store capacity (%d)\n", storePath, 
+	                   STORE_SIZE);
 	      exit(EXIT_FAILURE);
 	      /* NOT REACHED */
 	    }
@@ -875,7 +896,8 @@ void readStore () {
 	  exit(EXIT_FAILURE);
 	  /* NOT REACHED */
         }
-      fclose(f); // N.B. store file gets re-opened for writing at end of execution
+      fclose(f); // N.B. store file gets re-opened for writing at end of 
+                 // execution
       if   ( verbose & 1 )
 	fprintf(diag, "%d words read in from %s\n", i, storePath);
     }
@@ -953,7 +975,7 @@ void tidyExit (int32_t reason) {
       flushTTY();
       writeStore(); // save store for next run
       if   ( verbose & 1 )
-	       fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
+	       fprintf(diag, "Copying over residual input to %s\n", SAVE_FILE);
 	  int32_t ch;
 	  FILE *saveFile = fopen(SAVE_FILE, "wb");
 	  if  ( saveFile == NULL )
@@ -998,8 +1020,11 @@ void setupPlotter (void)
     plotterPenX = 1500;
     plotterPenY = plotterPaperHeight-200;
     plotterPenDown = FALSE;
-    if ( (plotterPenSize /= 3) == 0 ) plotterPenSize = 1;
-    if  ( verbose & 1 ) fprintf(diag, "Starting plotting\n");
+    if (plotterPenSize < 1 ) plotterPenSize = 1;
+    if  ( verbose & 1 ) {
+    	fprintf(diag, "Starting plotting. Plotter pen size %d\n", 
+    	        plotterPenSize);
+    	}
 }
 
 void savePlotterPaper (void)
@@ -1070,7 +1095,8 @@ void savePlotterPaper (void)
 	finalise:
 	if  ( fp != NULL ) fclose(fp);
 	if  ( info_ptr != NULL ) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
-	if  ( png_ptr != NULL ) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+	if  ( png_ptr != NULL ) png_destroy_write_struct(&png_ptr, 
+	                                                  (png_infopp)NULL);
 
 }
 
@@ -1101,9 +1127,12 @@ void movePlotter(int32_t bits)
 
   if ( plotterPenDown )
     {
-      for ( int32_t x = plotterPenX-plotterPenSize; x <= plotterPenX+plotterPenSize; x++ )
-	  for ( int32_t y = plotterPenY-plotterPenSize; y <= plotterPenY+plotterPenSize; y++ )
-	    if  ( (y >= 0) && ( y < plotterPaperHeight) ) // trim if outside N and S margins
+      for ( int32_t x = plotterPenX-plotterPenSize; x <= 
+           plotterPenX+plotterPenSize; x++ )
+	  for ( int32_t y = plotterPenY-plotterPenSize; y <= 
+	       plotterPenY+plotterPenSize; y++ )
+	    if  ( (y >= 0) && ( y < plotterPaperHeight) // trim if outside margins
+	        && ( x>= 0 && x < plotterPaperWidth) )
 	      {
 		address = (y*plotterPaperWidth*3)+(x*3);
 		// Three bytes are for R,G,B.  Set all to zero for black pen.
@@ -1254,7 +1283,8 @@ int32_t readTTY() {
 }
 
 void writeTTY(int32_t ch) {
-  int32_t ch2 = ( ((ch &= 127) == 10 ) || ((ch >= 32) && (ch <= 122)) ? ch : -1 );
+  int32_t ch2 = ( ((ch &= 127) == 10 ) || 
+                           ((ch >= 32) && (ch <= 122)) ? ch : -1 );
   if  ( verbose & 8 )
     {
       flushTTY();
