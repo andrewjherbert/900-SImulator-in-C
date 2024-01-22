@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 06/09/2022
+// Elliott 903 emulator - Andrew Herbert - 22/01/2024
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
