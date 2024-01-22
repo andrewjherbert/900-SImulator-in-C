@@ -16,7 +16,7 @@ cp bin/903algol/alg16klg_ajh_store .store
 ./to900text demos/903algol/$1.txt
 #echo run translator in library mode
 ./emu900 -j=13 $2 >.translate
-if [ $?  == 2 ]
+if [ $?  = 2 ]
 then cat .translate
      echo "\n*** Translator ran off end of source tape ***"
      exit 2
@@ -39,7 +39,7 @@ then
     fi
     #echo run interpreter
     ./emu900 -j=10 $2 -reader=.data
-    if [ $? == 2 ]
+    if [ $? = 2 ]
     then echo "\n*** Program ran off end of data tape ***"
     fi
     #echo process output

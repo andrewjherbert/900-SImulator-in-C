@@ -36,7 +36,7 @@ then
     rm .punch
     touch .punch
     ./emu900 -j=16 -reader=.data -ttyin=bin/905fortran/MM
-    if [ $? == 2 ]
+    if [ $? = 2 ]
     then echo -en "\n*** Program ran off end of data tape ***"
     fi
     echo
