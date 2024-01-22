@@ -11,15 +11,15 @@ then
 fi
 rm -f .reader .punch .ascii .translate
 echo loading Fortran
-cp bin/903fortran.fort16klg_iss5_store .store
+cp bin/903fortran/fort16klg_iss5_store .store
 echo convert input tape $1
 ./to900text demos/903fortran/$1.txt
 echo read program
 ./emu900 -j=8 $2 >.translate
-if [ $? != 0 ]
-then if [ $? == 2 ]
-     then echo -en "\n*** Translator ran off end of source tape ***"
-     fi
+cp .save .data
+if [ $? == 2 ]
+then cat .translate
+     echo -en "\n*** Translator ran off end of source tape ***"
      exit $?
 fi
 if [ ! -s .translate ]
@@ -28,7 +28,7 @@ then
     ./emu900 -j=10
     echo
     echo run program
-    ./emu900 -j=11
+    ./emu900 -j=11 -reader=.data
     if [ $? == 2 ]
     then echo -en "\n*** Program ran off end of data tape ***"
     fi

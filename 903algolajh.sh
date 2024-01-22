@@ -9,21 +9,20 @@ then
     echo $1 not found in demos/903algol
     exit
 fi
-rm -f .reader .punch .ascii .save .plot.png .translate
+rm -f .reader .punch .ascii .save .data .plot.png .translate
 #echo loading Algol
 cp bin/903algol/alg16klg_ajh_store .store
 #echo convert input tape
 ./to900text demos/903algol/$1.txt
 #echo run translator in library mode
-./emu900 -j=12 $2 >.translate
-if [ $? != 0 ]
-then if [ $? == 2 ]
-     then echo -en "\n*** Translator ran off end of source tape ***"
-     fi
-     exit $?
+./emu900 -j=13 $2 >.translate
+if [ $?  == 2 ]
+then cat .translate
+     echo "\n*** Translator ran off end of source tape ***"
+     exit 2
 fi
-cp .reader .save # there might be data following source code
-cat .translate
+cat .translate # display translator output
+cp .save .data # there might be data following source code
 # check to see if translation was successful
 grep --silent "^FAIL$" .translate
 if [ $? != 0 ]
@@ -39,9 +38,9 @@ then
         fi
     fi
     #echo run interpreter
-    ./emu900 -j=10 $2 -reader=.save
+    ./emu900 -j=10 $2 -reader=.data
     if [ $? == 2 ]
-    then echo -en "\n*** Program ran off end of data tape ***"
+    then echo "\n*** Program ran off end of data tape ***"
     fi
     #echo process output
     touch .punch

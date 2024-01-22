@@ -13,9 +13,9 @@
 //    LIBPNG for plotter output
 
 // Usage: emu900 [-d?] [-reader=file] [-punch=file] [-ttyin=file] [-plot=file]
-//        [-store=file] [-d|-dfile] [-a|-abandon=integer] [-h|-height=integer]
-//        [-j|-jump=integer] [-m|-monitor=address] [-p|-Pen=integer]
-//        [-r|-rtrace=integer] [-s|-start=address] [-t|-trace=integer]
+//        [-save=file] [-store=file] [-d|-dfile] [-a|-abandon=integer]
+//        [-h|-height=integer] [-j|-jump=integer] [-m|-monitor=address]
+//        [-p|-Pen=integer] [-r|-rtrace=integer] [-s|-start=address] [-t|-trace=integer]
 //        [-w|-width=integer] [-v|-verbose=integer] [-?|--help] [--usage]
 
 // Verbosity is controlled by the -v argument.  The level of reporting can be selected
@@ -36,8 +36,9 @@
 // retention of data in core store between entry points.
 
 // Paper tape input from the file .reader unless overridden by the -reader argument on
-// the command line. At the end it copies any unconsumed  input back to the file
-// overwriting previous content, unless there have been catastrophic errors. This is to
+// the command line. At the end it copies any unconsumed input back to the file
+// overwriting previous content, unless there have been catastrophic errors to the file
+// .save unless overridden by the -save argument on the command line. This is to
 // emulate leaving a tape in the reader between successive runs.
 
 // The input file should be a raw byte stream representing eight bit paper tape
@@ -88,7 +89,7 @@
 // module.
 
 // The program exits with an exit code indicating the reason for completion,
-// e.g., 0 = dynamic stop, 1 = run out of paper tape input, etc.2 = run out of
+// e.g., 0 = dynamic stop, 1 = run out of paper tape input, etc. 2 = run out of
 // teletype input, 3 = reached execution limit, 255 = catastropic error.  The
 // contents of the store,reader, punch and plotter files are undefined after a
 // catastrophic error.
@@ -120,6 +121,7 @@
 #define STORE_FILE ".store"    // store image - n.b., ERR_FOPEN_STORE_FILE
 #define PLOT_FILE  ".plot.png" // plotter output as png file
 #define STOP_FILE  ".stop"     // dynamic stop address
+#define SAVE_FILE  ".save"     // unconsumed paper tape input
 
 #define USAGE "Usage: emu900[-adjmrstv] <reader file> <punch file> <teletype file>\n"
 #define ERR_FOPEN_DIAG_LOGFILE  "Cannot open log file"
@@ -129,6 +131,7 @@
 #define ERR_FOPEN_PLOT_FILE     "Could not open plotter output file for writing - "
 #define ERR_FOPEN_STORE_FILE    "Could not open store dump file for writing - "
 #define ERR_FOPEN_STOP_FILE     "Could not open stop file for writing - "
+#define ERR_FOPEN_SAVE_FILE     "Could not open save file for writing - "
 
 // Booleans
 #define TRUE  1
@@ -237,13 +240,13 @@ int32_t plotterPenSize     = PEN_SIZE;
 
 void  decodeArgs(int32_t argc, const char **argv); // decode command line
 void  usage(poptContext optCon, int32_t exitcode, char *error, char *addl);
-void  catchInt();                // interrupt handler
+void  catchInt(int32_t sig);     // interrupt handler
 int32_t addtoi(char* arg);       // read numeric part of argument
 void  emulate();                 // run emulation
 void  checkAddress(int32_t addr);// check address within store bounds
 void  clearStore();              // clear main store
 void  readStore();               // read in a store image
-void  tidyExit();                // tidy up and exit
+void  tidyExit(int32_t reason);  // tidy up and exit
 void  writeStore();              // dump out store image
 void  printDiagnostics(int32_t i, int32_t f, int32_t a); // print diagnostic information for current instruction
 void  printTime(int64_t us);     // print out time counted in microseconds
@@ -273,7 +276,7 @@ int32_t main (int32_t argc, const char **argv) {
    emulate();                // run emulation
 }
 
-void catchInt(int32_t sig, void (*handler)(int)) {
+void catchInt(int32_t sig) {
   flushTTY();
   fprintf(stderr, "*** Execution terminated by interrupt\n");
   tidyExit(EXIT_FAILURE);
@@ -950,23 +953,21 @@ void tidyExit (int32_t reason) {
       flushTTY();
       writeStore(); // save store for next run
       if   ( verbose & 1 )
-	fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
-      if  ( ptrFile  != NULL )
-	{
+	       fprintf(diag, "Copying over residual input to %s\n", RDR_FILE);
 	  int32_t ch;
-	  FILE *ptrFile2 = fopen(RDR_FILE, "wb");
-	  if  ( ptrFile2 == NULL )
+	  FILE *saveFile = fopen(SAVE_FILE, "wb");
+	  if  ( saveFile == NULL )
 	    {
-	      fprintf(stderr, "*** Unable to save paper tape to %s", RDR_FILE);
-	      perror("");
+	      fprintf(stderr,"*** %s ", ERR_FOPEN_SAVE_FILE);
+          perror(SAVE_FILE);
 	      putchar('\n');
 	      exit(EXIT_FAILURE);
 	      /* NOT REACHED */
 	    }
-	  while ( (ch = fgetc(ptrFile)) != EOF ) fputc(ch, ptrFile2);
-	  fclose(ptrFile2);
+	  if ( ptrFile != NULL )
+	  	while ( (ch = fgetc(ptrFile)) != EOF ) fputc(ch, saveFile);
+	  fclose(saveFile);
 	}
-    }
   if ( ptrFile      != NULL ) fclose(ptrFile);
   if ( ttyiFile     != NULL ) fclose(ttyiFile);
   if ( punFile      != NULL ) fclose(punFile);
@@ -1006,8 +1007,8 @@ void savePlotterPaper (void)
     char *title = "Elliott 903 Plotter Output";
     int32_t y;
     FILE *fp;
-    png_structp png_ptr;
-    png_infop info_ptr;
+    png_structp png_ptr = NULL;
+    png_infop info_ptr = NULL;
 
     if  ( plotterPaper == NULL ) return;
 

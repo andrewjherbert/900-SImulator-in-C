@@ -9,7 +9,7 @@ then
     echo $1 not found in demos/903fortran
     exit
 fi
-rm -rf .reader .punch .reverse .save .ascii .linker
+rm -rf .reader .punch .reverse .save .data .ascii .linker
 #echo load compiler
 cp bin/905fortran/905fortran_iss6_store .store
 #echo convert input tape $1
@@ -18,7 +18,7 @@ cp bin/905fortran/905fortran_iss6_store .store
 ./emu900 -j=16 -ttyin=bin/905fortran/O0R
 echo
 # save paper tape in case contains data
-mv .reader .save
+cp .save .data
 #echo reverse output
 ./reverse
 #echo load loader
@@ -35,7 +35,7 @@ then
     # clear punch
     rm .punch
     touch .punch
-    ./emu900 -j=16 -reader=.save -ttyin=bin/905fortran/MM
+    ./emu900 -j=16 -reader=.data -ttyin=bin/905fortran/MM
     if [ $? == 2 ]
     then echo -en "\n*** Program ran off end of data tape ***"
     fi
