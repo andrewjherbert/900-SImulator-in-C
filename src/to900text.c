@@ -80,20 +80,20 @@ void convert (FILE *inFile, FILE *outFile) {
   fwide (inFile, 1); /* enable wide characters */
   while ( (wideCh = fgetwc(inFile) ) != WEOF) {
     if ( wideCh > 127 ) { // reject non-ASCII codes, e.g, if input is in UTF-8
-      if ( wideCh = 0xefbbbf ) continue; /* BOM */
+      if ( wideCh == 0xefbbbf ) continue; /* BOM */
       fprintf(stderr, "Non-ASCII character \"%c\" (%d) in input ignored\n", wideCh, wideCh);
     }
     if ( wideCh == haltCode[++ptr] ) { // matching against HALTCODE
       if ( ptr == HALTCODELEN )
 	{ // matched to end
-	  ptr =- 1; // reset pointer
+	  ptr = ptr - 1; // reset pointer
 	  fputc(20, outFile);
 	}
     } else { // match failed, empty buffer and then output character
       for ( int i = 0 ; i < ptr; i++ )
 	fputc(addParity(haltCode[i]), outFile);
       fputc(addParity(wideCh), outFile);
-      ptr =- 1; // reset pointer
+      ptr = ptr - 1; // reset pointer
     }
   }
 }

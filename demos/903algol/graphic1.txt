@@ -21,7 +21,8 @@ AUTOGRAPHICS;
     "INTEGER" E, WAY;
     "REAL" SCAA, SCAO;
     "BEGIN"
-        SCABSCISSA := (SCAA)*3; SCORDINATE := (SCAO)*3; "COMMENT" SET SCALING;
+        "COMMENT" Scale to fit 903 plotter (0.005" step, 14" wide B-L Type 141);
+        SCABSCISSA := (SCAA)*2.45; SCORDINATE := (SCAO)*2.45;
         SETORIGIN((E),
                   "IF" WAY = 1 "THEN" 0 "ELSE" "IF" WAY = 3 "THEN" 1 "ELSE" 0);
     "END" ESETORIGIN;
@@ -241,7 +242,6 @@ A3:
 
 "IF" YY "NE" 0 "THEN" EMOVEPEN(0, YY);
 ESETORIGIN (150, XS, YS, 1);
-EMOVEPEN(0, 100);
 "GOTO" NEWRUN;
 
 A4:
@@ -288,6 +288,19 @@ CIRCLEDRAW(S, P, Q, DX, DY, NOPOINTS, MODE);
 "GOTO" NEWRUN
 
 "END"
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 3  0  105  105
 2  0.1  3  1

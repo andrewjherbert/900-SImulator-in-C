@@ -1,4 +1,4 @@
-// Elliott 903 emulator - Andrew Herbert - 22/01/2024
+// Elliott 903 emulator - Andrew Herbert - 28/01/2024
 
 // Emulator for Elliott 903 / 920B.
 // Does not implement 'undefined' effects.
@@ -90,7 +90,8 @@
 // first.  The address part of -start must not exceed the available store size.
 
 // Addresses for the -start and -monitor arguments can be written in the form 
-// m^a where m represents an 8K store module number and a an address within the // selected store module.
+// m^a where m represents an 8K store module number and a an address within the
+// selected store module.
 
 // The program exits with an exit code indicating the reason for completion,
 // e.g., 0 = dynamic stop, 1 = run out of paper tape input, etc. 2 = run out of
@@ -170,9 +171,9 @@
 
 #define REEL 10*12*1000  // reel of paper tape in characters (1,000 feet, 10 ch/in)
 
-#define PAPER_WIDTH  3600  // 0.1 mm steps - 34cm max on B-L plotter
-#define PAPER_HEIGHT 3600  // 0.1 mm stemps
-#define PEN_SIZE        4  // pen nib size in steps
+#define PAPER_WIDTH  2800  // 0.005" steps, 14" wide on B-Ltype 141  plotter
+#define PAPER_HEIGHT 3600  
+#define PEN_SIZE        1  // pen nib size in steps
 
 
 /**********************************************************/

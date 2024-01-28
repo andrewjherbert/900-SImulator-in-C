@@ -9,7 +9,7 @@ then
     echo $1 not found in demos/903fortran
     exit
 fi
-rm -rf .reader .punch .reverse .save .data .ascii .linker
+rm -rf .*
 #echo load compiler
 cp bin/905fortran/905fortran_iss6_store .store
 #echo convert input tape $1
@@ -54,6 +54,7 @@ then
     fi
     echo
 fi
+rm -rf .reader .punch .reverse .save .data .ascii .linker
 
 
 

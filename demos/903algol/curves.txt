@@ -6,11 +6,11 @@ curves;
           reconstructed by Andrew Herbert
           22 September 2012;
 
-    "integer" i, j, eqnsize, super;
+    "integer" eqnsize, super;
     "real" pi, two pi, four pi, piby2, piby4,piby3, piby6, piby12;
     "real" in2steps, inc2rad, plot inc, eps;
     "real" chsize, cs;
-    "real" x, y;
+    "real" x;
 
 "comment" basic graphics;
 
@@ -300,8 +300,7 @@ curves;
     "value" a, b, x, y;
     "real"  a, b, x, y;
     "begin"
-        "real" xx, asq, limit, yyy;
-        "integer" i;
+        "real" xx, asq, limit;
         "real" "array" ycoords [-a*in2steps:+a*in2steps];
         asq := a*a;
         xx := -a;

@@ -9,7 +9,7 @@ then
     echo $1 not found in demos/903fortran
     exit
 fi
-rm -f .reader .punch .ascii .translate
+rm -rf .reader .punch .reverse .save .data .ascii .linker .translate .plot.png
 echo loading Fortran
 cp bin/903fortran/fort16klg_iss5_store .store
 echo convert input tape $1
@@ -50,6 +50,7 @@ else
     echo abandoned after translator errors
     echo
 fi
+rm -rf .reader .punch  .save .data .ascii 
 
 
 

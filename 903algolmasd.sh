@@ -9,7 +9,7 @@ then
     echo $1 not found in demos/903algol
     exit
 fi
-rm -f .reader .punch .ascii .save .data .plot.png .translate
+rm -rf .reader .punch .reverse .save .data .ascii .linker .translate .plot.png
 #echo loading Algol
 cp bin/903algol/alg16klg_masd_store .store
 #echo convert input tape
@@ -68,7 +68,7 @@ else
     echo Abandoned after translation errors
     echo
  fi
-
+rm -rf .reader .punch  .save .data .ascii  .translate
 
 
 
