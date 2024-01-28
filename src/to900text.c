@@ -3,7 +3,7 @@
 /* from900text inFile [outFile]                                    */
 /* outFile defaults to .reader                                     */
 /*                                                                 */
-/* Andrew Herbert 18 November 2021                                 */
+/* Andrew Herbert 28 January 2024                                  */
   
 
 #include <stdio.h>
@@ -79,21 +79,24 @@ void convert (FILE *inFile, FILE *outFile) {
   wint_t wideCh;
   fwide (inFile, 1); /* enable wide characters */
   while ( (wideCh = fgetwc(inFile) ) != WEOF) {
+    // fprintf(stderr, "Input (%c) %d\n", wideCh, wideCh);
     if ( wideCh > 127 ) { // reject non-ASCII codes, e.g, if input is in UTF-8
-      if ( wideCh == 0xefbbbf ) continue; /* BOM */
-      fprintf(stderr, "Non-ASCII character \"%c\" (%d) in input ignored\n", wideCh, wideCh);
+      if ( wideCh != 0xefbbbf ) continue; /* BOM */
+      fprintf(stderr, "Non-ASCII character \"%c\" (%d) in input ignored\n",
+	      wideCh, wideCh);
     }
-    if ( wideCh == haltCode[++ptr] ) { // matching against HALTCODE
+    else if ( wideCh == haltCode[++ptr] ) { // matching against HALTCODE
       if ( ptr == HALTCODELEN )
 	{ // matched to end
-	  ptr = ptr - 1; // reset pointer
+	  // fprintf(stderr, "%s \n", "End of <! HALT !>");
+	  ptr = -1; // reset pointer
 	  fputc(20, outFile);
 	}
     } else { // match failed, empty buffer and then output character
       for ( int i = 0 ; i < ptr; i++ )
 	fputc(addParity(haltCode[i]), outFile);
       fputc(addParity(wideCh), outFile);
-      ptr = ptr - 1; // reset pointer
+      ptr = -1; // reset pointer
     }
   }
 }
